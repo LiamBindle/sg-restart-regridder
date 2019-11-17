@@ -1,0 +1,5 @@
+*.nc
+*.nc4
+.idea/
+PET0.ESMF_LogFile
+*__pycache__*
