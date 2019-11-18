@@ -1,5 +1,6 @@
 from typing import List
 import os.path
+from datetime import datetime
 import functools
 import operator
 
@@ -28,12 +29,12 @@ class Experiment:
     def key_lut(self) -> dict:
         return self.templates
 
-    def load(self, collections: list, dates: pd.DatetimeIndex, variables) -> xr.Dataset:
-        files = [[os.path.join(
+    def load(self, collections: list, date: datetime, variables) -> xr.Dataset:
+        files = [os.path.join(
             self.experiment_directory,
             self.templates['output_dir'],
             self.templates['collection_fname'].format(collection=collection, timestamp=date.strftime('%Y%m%d_%H%M'))
-        ) for date in dates] for collection in collections]
+        ) for collection in collections]
         datasets = [xr.open_mfdataset(collection_files, combine='by_coords') for collection_files in files]
         datasets = [sg.pipe_operations.drop_all_except(ds, *variables) for ds in datasets]
         dataset = xr.Dataset()

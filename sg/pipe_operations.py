@@ -1,6 +1,10 @@
 import xarray as xr
 
 
+def noop(da: xr.DataArray, **kwargs):
+    return da
+
+
 def mask_stratosphere(da: xr.DataArray, supplemental: xr.Dataset, key_lut: dict, **kwargs):
     da_level = da[key_lut['collections_level_dimension']]
     tropopause_level = supplemental[key_lut['tropopause_level_key']]

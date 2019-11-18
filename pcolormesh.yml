@@ -1,0 +1,13 @@
+experiment:
+  directory: '/home/liam/stetson/BS1/gchp_TransportTracers-C180e/'
+  grid: 'StretchedGrid(48, 3.75, 33.7, 275.6)'
+
+pcolormesh:
+  target: 'SpeciesConc:SpeciesConc_Rn222'
+  supplemental: 'StateMet_avg:Met_TropLev'
+  date_range: {'start': '2016-01-01 0:30:00', 'periods': 2, 'freq': '1D'}
+  operation: 'tropospheric_average'
+  vmin: 0
+  vmax: 5e-20
+  units: 'mixing ratio'
+  title: 'Radon-222 Mixing Ratio'

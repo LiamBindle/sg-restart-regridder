@@ -13,7 +13,7 @@ class CSDataBase:
     def ye(self, face) -> np.ndarray:
         return self._csgrid_list[face]['lat_b']
 
-class CSData(CSDataBase):
+class CubeSphere(CSDataBase):
     def __init__(self, cs):
         _, self._csgrid_list = make_grid_CS(cs)
 
@@ -21,3 +21,7 @@ class CSData(CSDataBase):
 class StretchedGrid(CSDataBase):
     def __init__(self, cs, sf, target_lat, target_lon):
         _, self._csgrid_list = make_grid_SCS(cs, sf, target_lat, target_lon)
+        self.cs = cs
+        self.sf = sf
+        self.target_lat = target_lat
+        self.target_lon = target_lon
