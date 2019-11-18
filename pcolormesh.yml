@@ -5,9 +5,10 @@ experiment:
 pcolormesh:
   target: 'SpeciesConc:SpeciesConc_Rn222'
   supplemental: 'StateMet_avg:Met_TropLev'
-  date_range: {'start': '2016-01-01 0:30:00', 'periods': 2, 'freq': '1D'}
+  date_range: {'start': '2016-01-01 0:30:00', 'periods': 24, 'freq': '1H'}
   operation: 'tropospheric_average'
   vmin: 0
   vmax: 5e-20
   units: 'mixing ratio'
   title: 'Radon-222 Mixing Ratio'
+  output: 'Rn222/Rn222-{timestamp}.png'
