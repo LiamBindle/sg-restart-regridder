@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 
 
+from sg.grids import CSDataBase
+
 class FigureAxes:
     def __init__(self, ax: plt.Axes, projection: ccrs.Projection):
         self._ax = ax
