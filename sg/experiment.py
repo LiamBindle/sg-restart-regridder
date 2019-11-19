@@ -21,6 +21,7 @@ class Experiment:
         templates.setdefault('collections_x_dimension', 'Xdim')
         templates.setdefault('collections_y_dimension', 'Ydim')
         templates.setdefault('tropopause_level_key', 'Met_TropLev')
+        templates.setdefault('grid_box_area_key', 'Met_AREAM2')
         self.experiment_directory = directory
         self.templates = templates
         self.grid = grid
@@ -35,7 +36,8 @@ class Experiment:
             self.templates['output_dir'],
             self.templates['collection_fname'].format(collection=collection, timestamp=date.strftime('%Y%m%d_%H%M'))
         ) for collection in collections]
-        datasets = [xr.open_mfdataset(collection_files, combine='by_coords') for collection_files in files]
+        #datasets = [xr.open_mfdataset(collection_files, combine='by_coords') for collection_files in files]
+        datasets = [xr.open_mfdataset(collection_files) for collection_files in files]
         datasets = [sg.pipe_operations.drop_all_except(ds, *variables) for ds in datasets]
         dataset = xr.Dataset()
         for ds in datasets:

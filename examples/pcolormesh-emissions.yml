@@ -1,0 +1,13 @@
+experiment:
+  directory: '/home/liam/stetson/BS1/gchp_TransportTracers-C180e/'
+  grid: 'StretchedGrid(48, 3.75, 33.7, 275.6)'
+
+pcolormesh:
+  target: 'Emissions:EmisRn_Soil'
+  supplemental: []
+  date_range: {'start': '2016-01-01 0:30:00', 'periods': 24, 'freq': '1H'}
+  operation: 'noop'
+  vmin: 0
+  vmax: 3e-21
+  title: 'Radon-222 Soil Emissions'
+  output: 'Rn222/Rn222-emissions-{timestamp}.png'

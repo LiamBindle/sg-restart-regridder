@@ -1,4 +1,6 @@
+import numpy as np
 import xarray as xr
+
 
 
 def noop(da: xr.DataArray, **kwargs):
@@ -7,14 +9,22 @@ def noop(da: xr.DataArray, **kwargs):
 
 def mask_stratosphere(da: xr.DataArray, supplemental: xr.Dataset, key_lut: dict, **kwargs):
     da_level = da[key_lut['collections_level_dimension']]
-    tropopause_level = supplemental[key_lut['tropopause_level_key']]
+    tropopause_level_key = key_lut['tropopause_level_key']
+    if tropopause_level_key in supplemental:
+        tropopause_level = supplemental[key_lut['tropopause_level_key']]
+    else:
+        tropopause_level = 36
     da = da.where(da_level < tropopause_level)
     return da
 
 
 def mask_troposphere(da: xr.DataArray,  supplemental: xr.Dataset, key_lut: dict, **kwargs):
     da_level = da[key_lut['collections_level_dimension']]
-    tropopause_level = supplemental[key_lut['tropopause_level_key']]
+    tropopause_level_key = key_lut['tropopause_level_key']
+    if tropopause_level_key in supplemental:
+        tropopause_level = supplemental[key_lut['tropopause_level_key']]
+    else:
+        tropopause_level = 36
     da = da.where(da_level > tropopause_level)
     return da
 
@@ -43,6 +53,14 @@ def tropospheric_average(da: xr.DataArray,  supplemental: xr.Dataset, key_lut: d
         vertical_average,
         key_lut=key_lut
     )
+
+
+def per_m2(da: xr.DataArray, supplemental: xr.Dataset, key_lut: dict, **kwargs):
+    return da / supplemental[key_lut['grid_box_area_key']]
+
+
+def log10(da: xr.DataArray, supplemental: xr.Dataset, key_lut: dict, **kwargs):
+    return np.log10(da)
 
 
 def stratospheric_average(da: xr.DataArray,  supplemental: xr.Dataset, key_lut: dict, **kwargs):

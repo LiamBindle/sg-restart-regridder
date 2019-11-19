@@ -60,8 +60,13 @@ if __name__ == '__main__':
         da = ds[target]
 
         # Perform operation
-        callable_operation = eval(yaml_input['pcolormesh']['operation'])
-        da = callable_operation(da, ds, experiment.key_lut)
+        operations = yaml_input['pcolormesh'].get('operation', 'noop')
+        if isinstance(operations, str):
+            operations = [eval(operations)]
+        else:
+            operations = [eval(operation) for operation in operations]
+        for callable_operation in operations:
+            da = callable_operation(da, supplemental=ds, key_lut=experiment.key_lut)
 
         # General figure settings
         if vmax is None:
@@ -78,7 +83,7 @@ if __name__ == '__main__':
             face_data = select_face(da, face=face, key_lut=experiment.key_lut)
 
             # Draw grid
-            draw_minor_grid_boxes(figax, xx, yy)
+            #draw_minor_grid_boxes(figax, xx, yy)
             #draw_major_grid_boxes(figax, xx, yy)
 
             # Plot data
