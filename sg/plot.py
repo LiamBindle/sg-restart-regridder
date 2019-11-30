@@ -64,9 +64,9 @@ def draw_major_grid_boxes(figax: FigureAxes, xx, yy, **kwargs):
             figax.ax.plot(x[s:e], y[s:e], **kwargs)
 
 
-def draw_face_number(figax: FigureAxes, xx, yy, face, stroke_width=1, **kwargs):
+def draw_face_number(figax: FigureAxes, xx, yy, face, x_shift=0, y_shift=0, **kwargs):
     middle = np.array(xx.shape, dtype=np.int) // 2
-    text = figax.ax.text(xx[middle[0], middle[1]], yy[middle[0], middle[1]], f'{face}', **kwargs)
+    text = figax.ax.text(xx[middle[0]+x_shift, middle[1]+y_shift], yy[middle[0]+x_shift, middle[1]+y_shift], f'{face}', **kwargs)
     return text
 
 
@@ -100,3 +100,33 @@ def plot_pcolomesh(figax: FigureAxes, xx, yy, data: xr.DataArray, **kwargs):
 
     data = np.ma.masked_where(mask, data.values)
     return figax.ax.pcolormesh(xx, yy, data, **kwargs)
+
+
+if __name__ == '__main__':
+    f = plt.figure()
+
+    grid = CubeSphere(48)
+
+    #proj = ccrs.PlateCarree()
+    proj = ccrs.NearsidePerspective(360 - 78, 36)
+
+    ax = plt.subplot(1, 1, 1, projection=proj)
+    figax = FigureAxes(ax, proj)
+
+    ax.set_global()
+    ax.coastlines(linewidth=0.8)
+
+    for i in range(6):
+        draw_minor_grid_boxes(figax, *figax.transform_xy(grid.xe(i), grid.ye(i)), color='blue')
+        draw_major_grid_boxes(figax, *figax.transform_xy(grid.xe(i), grid.ye(i)), color='blue')
+        draw_face_number(figax, *figax.transform_xy(grid.xe(i), grid.ye(i)), face=i, color='blue')
+
+    grid = StretchedGrid(48, 1, -90, -10+180)
+    for i in range(6):
+        draw_minor_grid_boxes(figax, *figax.transform_xy(grid.xe(i), grid.ye(i)), color='red')
+        draw_major_grid_boxes(figax, *figax.transform_xy(grid.xe(i), grid.ye(i)), color='red')
+        draw_face_number(figax, *figax.transform_xy(grid.xe(i), grid.ye(i)), face=i, color='red')
+
+
+    plt.tight_layout()
+    plt.show()

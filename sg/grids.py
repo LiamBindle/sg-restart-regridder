@@ -7,6 +7,12 @@ from sg.transform import make_grid_SCS
 from gcpy.grid.horiz import make_grid_CS
 
 class CSDataBase:
+    def xc(self, face) -> np.ndarray:
+        return self._csgrid_list[face]['lon']
+
+    def yc(self, face) -> np.ndarray:
+        return self._csgrid_list[face]['lat']
+
     def xe(self, face) -> np.ndarray:
         return self._csgrid_list[face]['lon_b']
 

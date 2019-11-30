@@ -241,7 +241,10 @@ if __name__ == '__main__':
         subax = add_subplot_axes(figax.ax, [0.4, 0.05 ,0.6,0.9]) # from left, from bot, width, height
         figax = FigureAxes(subax, ccrs.Mercator())
         for face in range(6):
-            if face != 4: continue
+            if isinstance(experiment.grid, StretchedGrid):
+                if face == 2: continue
+            elif isinstance(experiment.grid, CubeSphere):
+                if face != 4: continue
             xx, yy = figax.transform_xy(experiment.grid.xe(face), experiment.grid.ye(face))
 
             face_data = select_face(da, face=face, key_lut=experiment.key_lut)
@@ -269,7 +272,8 @@ if __name__ == '__main__':
 
 
         plt.tight_layout()
-        plt.savefig(os.path.join(output_dir, output_fname.format(timestamp=timestamp)))
-        #plt.show()
+        if yaml_input['pcolormesh'].get('show_only', False):
+            plt.show()
+        else:
+            plt.savefig(os.path.join(output_dir, output_fname.format(timestamp=timestamp)))
         plt.close()
-

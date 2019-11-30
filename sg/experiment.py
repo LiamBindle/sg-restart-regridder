@@ -21,6 +21,7 @@ class Experiment:
         templates.setdefault('collections_x_dimension', 'Xdim')
         templates.setdefault('collections_y_dimension', 'Ydim')
         templates.setdefault('tropopause_level_key', 'Met_TropLev')
+        templates.setdefault('pbl_level_key', 'Met_PBLTOPL')
         templates.setdefault('grid_box_area_key', 'Met_AREAM2')
         self.experiment_directory = directory
         self.templates = templates
