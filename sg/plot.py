@@ -105,10 +105,11 @@ def plot_pcolomesh(figax: FigureAxes, xx, yy, data: xr.DataArray, **kwargs):
 if __name__ == '__main__':
     f = plt.figure()
 
-    grid = CubeSphere(48)
+    # grid = CubeSphere(48)
+    grid = StretchedGrid(48, 1, 0, -10)
 
-    #proj = ccrs.PlateCarree()
-    proj = ccrs.NearsidePerspective(360 - 78, 36)
+    proj = ccrs.PlateCarree()
+    #proj = ccrs.NearsidePerspective(360 - 78, 36)
 
     ax = plt.subplot(1, 1, 1, projection=proj)
     figax = FigureAxes(ax, proj)
@@ -117,15 +118,15 @@ if __name__ == '__main__':
     ax.coastlines(linewidth=0.8)
 
     for i in range(6):
-        draw_minor_grid_boxes(figax, *figax.transform_xy(grid.xe(i), grid.ye(i)), color='blue')
-        draw_major_grid_boxes(figax, *figax.transform_xy(grid.xe(i), grid.ye(i)), color='blue')
-        draw_face_number(figax, *figax.transform_xy(grid.xe(i), grid.ye(i)), face=i, color='blue')
+        draw_minor_grid_boxes(figax, *figax.transform_xy(grid.xe(i), grid.ye(i)), color='black')
+        draw_major_grid_boxes(figax, *figax.transform_xy(grid.xe(i), grid.ye(i)), color='black')
+        draw_face_number(figax, *figax.transform_xy(grid.xe(i), grid.ye(i)), face=i, color='black')
 
-    grid = StretchedGrid(48, 1, -90, -10+180)
-    for i in range(6):
-        draw_minor_grid_boxes(figax, *figax.transform_xy(grid.xe(i), grid.ye(i)), color='red')
-        draw_major_grid_boxes(figax, *figax.transform_xy(grid.xe(i), grid.ye(i)), color='red')
-        draw_face_number(figax, *figax.transform_xy(grid.xe(i), grid.ye(i)), face=i, color='red')
+    # grid = StretchedGrid(48, 1, -90, -10+180)
+    # for i in range(6):
+    #     draw_minor_grid_boxes(figax, *figax.transform_xy(grid.xe(i), grid.ye(i)), color='red')
+    #     draw_major_grid_boxes(figax, *figax.transform_xy(grid.xe(i), grid.ye(i)), color='red')
+    #     draw_face_number(figax, *figax.transform_xy(grid.xe(i), grid.ye(i)), face=i, color='red')
 
 
     plt.tight_layout()

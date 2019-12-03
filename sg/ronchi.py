@@ -1,14 +1,5 @@
 import numpy as np
 
-
-# def auxiliary_X(xi):
-#     return np.tan(xi)
-#
-#
-# def auxiliary_Y(eta):
-#     return np.tan(eta)
-
-
 def auxiliary_delta(X, Y):
     return 1 + X**2 + Y**2
 
@@ -115,8 +106,7 @@ def spherical_to_gmao(phi, theta, gmao_face: int):
         gmao_to_ronchi = np.array([
             [1, 0],
             [0, 1]
-        ]) #    ^---- psi in ronchi
-           # ^------- zeta in ronchi
+        ])
     if gmao_face == 2:
         ronchi_face = 2
         gmao_to_ronchi = np.array([
@@ -173,8 +163,14 @@ if __name__ == '__main__':
     ax.set_global()
     ax.coastlines(linewidth=0.8)
 
-    U = np.array([1, 0])
-    V = np.array([0, 1])
+    # U = np.array([1, 0])
+    # V = np.array([0, 1])
+    U = np.ndarray((13, 13, 2, 1))
+    V = np.ndarray((13, 13, 2, 1))
+    U[:, :, 0, 0] = 1
+    U[:, :, 1, 0] = 0
+    V[:, :, 0, 0] = 0
+    V[:, :, 1, 0] = 1
 
     for i in range(6):
         draw_minor_grid_boxes(figax, *figax.transform_xy(grid.xe(i), grid.ye(i)))
@@ -192,11 +188,13 @@ if __name__ == '__main__':
     # eta = np.linalg.inv(G) @ V
 
     G_inv = np.linalg.inv(G)
-    xi = np.tensordot(G_inv, U, (3, 0))
-    eta = np.tensordot(G_inv, V, (3, 0))
+    # xi = np.tensordot(G_inv, U, (3, 0))  # sum product over G(axis=last) and U(axis=last)
+    # eta = np.tensordot(G_inv, V, (3, 0))
+    xi = G_inv @ U
+    eta = G_inv @ V
 
-    ax.quiver(xx, yy, xi[:, :, 0], xi[:, :,1], pivot='tail', angles='xy', scale_units='xy', scale=0.5, color='g')
-    ax.quiver(xx, yy, eta[:, :, 0], eta[:, :, 1], pivot='tail', angles='xy', scale_units='xy', scale=0.5, color='m')
+    ax.quiver(xx, yy, xi[:, :, 0, 0], xi[:, :, 1, 0], pivot='tail', angles='xy', scale_units='xy', scale=0.5, color='g')
+    ax.quiver(xx, yy, eta[:, :, 0, 0], eta[:, :, 1, 0], pivot='tail', angles='xy', scale_units='xy', scale=0.5, color='m')
 
     # for xx, yy in tqdm(zip(grid.xe(face-1)[::4,::4].flatten(), grid.ye(face-1)[::4,::4].flatten())):
     #     # Rm = lon_lat_to_xi_eta(np.deg2rad(xx+10), np.deg2rad(90-yy), ronchi_face=5)
