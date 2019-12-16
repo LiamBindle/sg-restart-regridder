@@ -2,6 +2,7 @@ import numpy as np
 import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 import matplotlib.colors
+import cartopy
 import shapely.geometry
 from tqdm import tqdm
 import pyproj
@@ -95,6 +96,8 @@ def enhance_gridbox_edges(box_xy: np.array, res):
 
 
 def draw_polygons(ax, xx, yy, data, **kwargs):
+    if np.any(xx > 180):
+        raise ValueError('xx must be in [-180, 180]')
     # xx must be [-180 to 180]
     p0 = slice(0, -1)
     p1 = slice(1, None)
@@ -125,34 +128,50 @@ def draw_polygons(ax, xx, yy, data, **kwargs):
         else:
             pm[tuple(idx)] = False
 
+    eps = 0.2
+
     # Plot pm
     pm_idx = np.argwhere(~pm)
     for idx in pm_idx:
-        enhanced_xy = enhance_gridbox_edges(boxes[tuple(idx)], 30)
+        enhanced_xy = enhance_gridbox_edges(boxes[tuple(idx)], 60)
         poly = shapely.geometry.Polygon(enhanced_xy)
+        linewidth = max([0.07, np.log(poly.length / 4) * 0.2])
+        linewidth=min([0.3, linewidth])
+        ax.add_geometries([poly], ccrs.PlateCarree(), edgecolor='#15151550', facecolor='None', linewidth=linewidth, zorder=-0.5)
+        poly = poly.buffer(eps)
         c = cmap(norm(data[tuple(idx)]))
         ax.add_geometries([poly], ccrs.PlateCarree(), edgecolor='None', facecolor=c, linewidth=0, zorder=-1)
+
 
     # Plot am
     am_idx = np.argwhere(~am)
     for idx in am_idx:
         b = boxes[tuple(idx)]
         b[:, 0] = b[:, 0] % 360
-        enhanced_xy = enhance_gridbox_edges(b, 30)
+        enhanced_xy = enhance_gridbox_edges(b, 60)
         enhanced_xy[:,0] = enhanced_xy[:,0] % 360
         poly = shapely.geometry.Polygon(enhanced_xy)
-        if not poly.is_closed:
-            print('here')
+        linewidth = max([0.07, np.log(poly.length / 4) * 0.2])
+        linewidth=min([0.3, linewidth])
+        ax.add_geometries([poly], ccrs.PlateCarree(), edgecolor='#15151550', facecolor='None', linewidth=linewidth,
+                          zorder=-0.5)
+        poly = poly.buffer(eps)
         c = cmap(norm(data[tuple(idx)]))
         ax.add_geometries([poly], ccrs.PlateCarree(), edgecolor='None', facecolor=c, linewidth=0.3, zorder=-1)
+
 
     # Plot others
     neither_idx = np.argwhere(~neither)
     for idx in tqdm(neither_idx):
-        enhanced_xy = enhance_gridbox_edges(boxes[tuple(idx)], 30)
+        enhanced_xy = enhance_gridbox_edges(boxes[tuple(idx)], 90)
         poly = shapely.geometry.LinearRing(enhanced_xy)
+        linewidth = max([0.07, np.log(poly.length / 4) * 0.2])
+        linewidth=min([0.3, linewidth])
+        ax.add_geometries([poly], ccrs.PlateCarree(), edgecolor='#15151550', facecolor='None', linewidth=linewidth,
+                          zorder=-0.5)
+        poly_buff = poly.buffer(eps)
         c = cmap(norm(data[tuple(idx)]))
-        ax.add_geometries([poly], ccrs.PlateCarree(), edgecolor='None', facecolor=c, linewidth=0, zorder=-1)
+        ax.add_geometries([poly, poly_buff], ccrs.PlateCarree(), edgecolor='None', facecolor=c, linewidth=0, zorder=-1)
 
 grid = sg.grids.StretchedGrid(48, 15, 33.7, 275.6)
 # grid = sg.grids.CubeSphere(48)
@@ -160,8 +179,12 @@ grid = sg.grids.StretchedGrid(48, 15, 33.7, 275.6)
 ds = xr.open_dataset('/extra-space/GCHP.SpeciesConc.20160113_1230z.nc4')
 
 plt.figure(figsize=(12,6))
-ax = plt.axes(projection=ccrs.Mollweide())
-ax.coastlines()
+ax = plt.axes(projection=ccrs.EqualEarth(), )
+# ax.coastlines(linewidth=0.3, color='#656565')
+ax.add_feature(cartopy.feature.BORDERS, linewidth=0.3, edgecolor='k')
+ax.add_feature(cartopy.feature.COASTLINE, linewidth=0.3, edgecolor='k')
+ax.set_global()
+ax.outline_patch.set_edgecolor('#151515')
 #ax.background_patch.set_fill(False)
 
 for i in [2]:#[5, 4, 3, 1, 0, 2][::-1]:
@@ -170,6 +193,15 @@ for i in [2]:#[5, 4, 3, 1, 0, 2][::-1]:
     xx = grid.xe(i)
     yy = grid.ye(i)
     # plot_pcolomesh(ax, xx, yy, da.values, vmin=0, vmax=3e-20, cmap='cividis')
+    xx[xx > 180] -= 360
     draw_polygons(ax, xx, yy, da.values)
-plt.savefig('temp.png', dpi=100)
+for i in [5, 4, 3, 1, 0][::-1]:
+    level = 17
+    da = ds['SpeciesConc_Rn222'].isel(time=0, nf=i, lev=level).squeeze()#.transpose('Xdim', 'Ydim')
+    xx = grid.xe(i)
+    yy = grid.ye(i)
+    xx[xx > 180] -= 360
+    plot_pcolomesh(ax, xx, yy, da.values, vmin=0, vmax=3e-20, cmap='cividis')
+    # draw_polygons(ax, xx, yy, da.values)
+plt.savefig('temp.png', dpi=100, facecolor='#151515', edgecolor='#151515')
 # plt.show()
