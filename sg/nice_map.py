@@ -135,7 +135,7 @@ def draw_polygons(ax, xx, yy, data, **kwargs):
     for idx in pm_idx:
         enhanced_xy = enhance_gridbox_edges(boxes[tuple(idx)], 60)
         poly = shapely.geometry.Polygon(enhanced_xy)
-        linewidth = max([0.07, np.log(poly.length / 4) * 0.2])
+        linewidth = max([0.06, np.log(poly.length / 4) * 0.2])
         linewidth=min([0.3, linewidth])
         ax.add_geometries([poly], ccrs.PlateCarree(), edgecolor='#15151550', facecolor='None', linewidth=linewidth, zorder=-0.5)
         poly = poly.buffer(eps)
@@ -151,7 +151,7 @@ def draw_polygons(ax, xx, yy, data, **kwargs):
         enhanced_xy = enhance_gridbox_edges(b, 60)
         enhanced_xy[:,0] = enhanced_xy[:,0] % 360
         poly = shapely.geometry.Polygon(enhanced_xy)
-        linewidth = max([0.07, np.log(poly.length / 4) * 0.2])
+        linewidth = max([0.06, np.log(poly.length / 4) * 0.2])
         linewidth=min([0.3, linewidth])
         ax.add_geometries([poly], ccrs.PlateCarree(), edgecolor='#15151550', facecolor='None', linewidth=linewidth,
                           zorder=-0.5)
@@ -165,13 +165,13 @@ def draw_polygons(ax, xx, yy, data, **kwargs):
     for idx in tqdm(neither_idx):
         enhanced_xy = enhance_gridbox_edges(boxes[tuple(idx)], 90)
         poly = shapely.geometry.LinearRing(enhanced_xy)
-        linewidth = max([0.07, np.log(poly.length / 4) * 0.2])
+        linewidth = max([0.06, np.log(poly.length / 4) * 0.2])
         linewidth=min([0.3, linewidth])
         ax.add_geometries([poly], ccrs.PlateCarree(), edgecolor='#15151550', facecolor='None', linewidth=linewidth,
                           zorder=-0.5)
         poly_buff = poly.buffer(eps)
         c = cmap(norm(data[tuple(idx)]))
-        ax.add_geometries([poly, poly_buff], ccrs.PlateCarree(), edgecolor='None', facecolor=c, linewidth=0, zorder=-1)
+        ax.add_geometries([poly, poly_buff.exterior], ccrs.PlateCarree(), edgecolor='None', facecolor=c, linewidth=0, zorder=-1)
 
 grid = sg.grids.StretchedGrid(48, 15, 33.7, 275.6)
 # grid = sg.grids.CubeSphere(48)
@@ -179,7 +179,7 @@ grid = sg.grids.StretchedGrid(48, 15, 33.7, 275.6)
 ds = xr.open_dataset('/extra-space/GCHP.SpeciesConc.20160113_1230z.nc4')
 
 plt.figure(figsize=(12,6))
-ax = plt.axes(projection=ccrs.EqualEarth(), )
+ax = plt.axes(projection=ccrs.Robinson(), )
 # ax.coastlines(linewidth=0.3, color='#656565')
 ax.add_feature(cartopy.feature.BORDERS, linewidth=0.3, edgecolor='k')
 ax.add_feature(cartopy.feature.COASTLINE, linewidth=0.3, edgecolor='k')
@@ -203,5 +203,5 @@ for i in [5, 4, 3, 1, 0][::-1]:
     xx[xx > 180] -= 360
     plot_pcolomesh(ax, xx, yy, da.values, vmin=0, vmax=3e-20, cmap='cividis')
     # draw_polygons(ax, xx, yy, da.values)
-plt.savefig('temp.png', dpi=100, facecolor='#151515', edgecolor='#151515')
+plt.savefig('temp-ro.png', dpi=100, facecolor='#151515', edgecolor='#151515')
 # plt.show()
