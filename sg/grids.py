@@ -54,6 +54,7 @@ class CSDataBase:
 class CubeSphere(CSDataBase):
     def __init__(self, cs):
         _, self._csgrid_list = make_grid_CS(cs)
+        self._make_rings()
 
 
 class StretchedGrid(CSDataBase):
@@ -63,13 +64,13 @@ class StretchedGrid(CSDataBase):
         self.sf = sf
         self.target_lat = target_lat
         self.target_lon = target_lon
+        self._make_rings()
 
 
 if __name__ == '__main__':
     grid = CubeSphere(48)
-    grid._make_rings()
 
-    lon, lat = np.meshgrid(np.linspace(0, 360, 1000), np.linspace(-90, 90, 1000))
+    lon, lat = np.meshgrid(np.linspace(0, 360, 200), np.linspace(-90, 90, 200))
     faces = grid.get_face(lon, lat)
     #print(faces)
 

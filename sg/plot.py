@@ -89,13 +89,13 @@ def plot_pcolomesh(figax: FigureAxes, xx, yy, data: xr.DataArray, **kwargs):
         if figax.x_split:
             idx = np.argwhere(np.diff(np.sign(x % 360 - figax.x_split))).flatten()
             x360 = x % 360
-            idx = idx[(x360[idx] > 10) & (x360[idx] < 350)]
+            idx = idx[(x360[idx] > 30) & (x360[idx] < 330)]
             mask[i, idx] = True
     for i, x in enumerate(xx[:-1,:-1].transpose()):
         if figax.x_split:
             idx = np.argwhere(np.diff(np.sign(x % 360 - figax.x_split))).flatten()
             x360 = x % 360
-            idx = idx[(x360[idx] > 10) & (x360[idx] < 350)]
+            idx = idx[(x360[idx] > 30) & (x360[idx] < 330)]
             mask[idx, i] = True
 
     data = np.ma.masked_where(mask, data.values)
