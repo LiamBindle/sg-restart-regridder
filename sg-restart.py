@@ -61,8 +61,8 @@ if __name__ == '__main__':
                         metavar='R',
                         nargs=1,
                         type=str,
-                        default=['TransportTracers'],
-                        choices=['TransportTracers'],
+                        default=['Standard'],
+                        choices=['TransportTracers', 'Standard'],
                         help='GCHP simulation type')
     parser.add_argument('--llres',
                         metavar='R',
@@ -108,6 +108,8 @@ if __name__ == '__main__':
             'SPC_Passive': 'SPC_PASV',
             'SPC_PassiveTracer': 'SPC_PASV',
         }
+    elif sim == 'Standard':
+        aliases = {}
     else:
         raise ValueError(f'Unknown simulation type: {sim}')
     for alias, real in aliases.items():
