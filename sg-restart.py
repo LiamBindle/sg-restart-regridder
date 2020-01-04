@@ -117,6 +117,10 @@ if __name__ == '__main__':
 
     ds_out.attrs['history'] = datetime.now().strftime('%c:') + ' '.join(sys.argv) + '\n' + ds_out.attrs['history']
 
+    # Drop variables depending on simulation type
+    if sim == 'Standard':
+        ds_out = ds_out.drop(['AREA'])
+
     # Drop lat and lon
     ds_out = ds_out.drop(['lat', 'lon'])
 
@@ -136,34 +140,38 @@ if __name__ == '__main__':
         ds_out[v].values = ds_out[v].values.astype(np.float32)
 
     # Fix coordinate attributes
-    ds_out['lev'].attrs = {
-        'standard_name': 'level',
-        'long_name': 'Level',
-        'units': 'eta_level',
-        'axis': 'Z',
-    }
-    ds_out['lat'].attrs = {
-        'standard_name': 'latitude',
-        'long_name': 'Latitude',
-        'units': 'degrees_north',
-        'axis': 'Y',
-    }
-    ds_out['lon'].attrs = {
-        'standard_name': 'longitude',
-        'long_name': 'Longitude',
-        'units': 'degrees_east',
-        'axis': 'X',
-    }
-    ds_out['time'].attrs = {
-        'standard_name': 'time',
-        'long_name': 'Time',
-        'units': 'hours since 1985-1-1 00:00:0.0',
-        'axis': 'T',
-        'calendar': 'gregorian',
-    }
+    # ds_out['lev'].attrs = {
+    #     'standard_name': 'level',
+    #     'long_name': 'Level',
+    #     'units': 'eta_level',
+    #     'axis': 'Z',
+    # }
+    # ds_out['lat'].attrs = {
+    #     'standard_name': 'latitude',
+    #     'long_name': 'Latitude',
+    #     'units': 'degrees_north',
+    #     'axis': 'Y',
+    # }
+    # ds_out['lon'].attrs = {
+    #     'standard_name': 'longitude',
+    #     'long_name': 'Longitude',
+    #     'units': 'degrees_east',
+    #     'axis': 'X',
+    # }
+    # ds_out['time'].attrs = {
+    #     'standard_name': 'time',
+    #     'long_name': 'Time',
+    #     'units': 'hours since 1985-1-1 00:00:0.0',
+    #     'axis': 'T',
+    #     'calendar': 'gregorian',
+    # }
+    ds_out['lev'].attrs = ds_in['lev'].attrs
+    ds_out['lat'].attrs = ds_in['lat'].attrs
+    ds_out['lon'].attrs = ds_in['lon'].attrs
+    ds_out['time'].attrs = ds_in['time'].attrs
 
     # Write dataset
     ds_out.to_netcdf(
-        f'initial_GEOSChem_rst.c{csres}_{sg_spec_to_str(stretch_factor, target_lat, target_lon)}_TransportTracers.nc',
+        f'initial_GEOSChem_rst.c{csres}_{sg_spec_to_str(stretch_factor, target_lat, target_lon)}_{sim}.nc',
         format='NETCDF4_CLASSIC'
     )
