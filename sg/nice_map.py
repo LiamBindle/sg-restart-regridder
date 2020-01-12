@@ -183,9 +183,10 @@ grid = sg.grids.StretchedGrid(48, 15, 33.7, 275.6)
 # grid = sg.grids.CubeSphere(48)
 
 from datetime import datetime
-time = datetime(2016, 1, 13, 12, 30)
+import sys
+time = datetime(2016, 1, sys.argv[1], sys.argv[2], 30)
 
-ds = xr.open_dataset(f'/extra-space/GCHP.SpeciesConc.{time.year:4d}{time.month:02d}{time.day:02d}_{time.hour:02d}{time.minute:02d}z.nc4')
+ds = xr.open_dataset(f'GCHP.SpeciesConc.{time.year:4d}{time.month:02d}{time.day:02d}_{time.hour:02d}{time.minute:02d}z.nc4')
 
 plt.figure(figsize=(12,6))
 ax = plt.axes(projection=ccrs.Mollweide(), )
@@ -365,5 +366,5 @@ atl_y = 34
 subax.text(atl_x, atl_y, f'Atlanta',
               horizontalalignment='center', verticalalignment='bottom', weight='normal', color='white', transform=ccrs.PlateCarree())
 
-plt.savefig('temp-mo.png', dpi=100, facecolor='#151515', edgecolor='#151515')
+plt.savefig(f'frames-overlaid/{time.year:4d}{time.month:02d}{time.day:02d}_{time.hour:02d}{time.minute:02d}z.jpeg', dpi=100, facecolor='#151515', edgecolor='#151515')
 # plt.show()
