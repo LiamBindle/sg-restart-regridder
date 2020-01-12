@@ -184,7 +184,7 @@ grid = sg.grids.StretchedGrid(48, 15, 33.7, 275.6)
 
 from datetime import datetime
 import sys
-time = datetime(2016, 1, sys.argv[1], sys.argv[2], 30)
+time = datetime(2016, 1, int(sys.argv[1]), int(sys.argv[2]), 30)
 
 ds = xr.open_dataset(f'GCHP.SpeciesConc.{time.year:4d}{time.month:02d}{time.day:02d}_{time.hour:02d}{time.minute:02d}z.nc4')
 
