@@ -12,6 +12,12 @@ import xarray as xr
 import sg.grids
 import sg.plot
 
+import cartopy.feature as cfeature
+
+
+from cartopy.io.shapereader import Reader
+from cartopy.feature import ShapelyFeature
+
 def plot_pcolomesh(ax, xx, yy, data, **kwargs):
     # xx must be [-180 to 180]
     p0 = slice(0, -1)
@@ -176,7 +182,10 @@ def draw_polygons(ax, xx, yy, data, **kwargs):
 grid = sg.grids.StretchedGrid(48, 15, 33.7, 275.6)
 # grid = sg.grids.CubeSphere(48)
 
-ds = xr.open_dataset('/extra-space/GCHP.SpeciesConc.20160113_1230z.nc4')
+from datetime import datetime
+time = datetime(2016, 1, 13, 12, 30)
+
+ds = xr.open_dataset(f'/extra-space/GCHP.SpeciesConc.{time.year:4d}{time.month:02d}{time.day:02d}_{time.hour:02d}{time.minute:02d}z.nc4')
 
 plt.figure(figsize=(12,6))
 ax = plt.axes(projection=ccrs.Mollweide(), )
@@ -204,5 +213,157 @@ for i in [5, 4, 3, 1, 0][::-1]:
     xx[xx > 180] -= 360
     plot_pcolomesh(ax, xx, yy, da.values, vmin=0, vmax=3e-20, cmap='cividis')
     # draw_polygons(ax, xx, yy, da.values)
+
+plt.text(-0.14, 0.025, f'{time.year:4d}-{time.month:02d}-{time.day:02d} {time.hour:02d}:{time.minute:02d}Z', color='white', fontsize=16, transform=ax.transAxes, horizontalalignment='left', verticalalignment='bottom')
+plt.text(-0.14, -0.1, f'Radon-222 concentration (model level 17)\nGCHPctm 13.0.0-alpha.0\nC48 (stretch=15x) transport tracer simulation', color='white', fontsize=12, transform=ax.transAxes, horizontalalignment='left', verticalalignment='bottom', linespacing=1.4)
+
+
+fname = r'/home/liam/sg-restart-regridder/atlanta/City_of_Atlanta_Neighborhood_Statistical_Areas.shp'
+shape_feature = ShapelyFeature(Reader(fname).geometries(),
+                               ccrs.PlateCarree(), edgecolor='white', linewidth=0.5, facecolor='white')
+
+
+def add_subplot_axes(ax,rect,axisbg='w'):
+    fig = plt.gcf()
+    box = ax.get_position()
+    width = box.width
+    height = box.height
+    inax_position  = ax.transAxes.transform(rect[0:2])
+    transFigure = fig.transFigure.inverted()
+    infig_position = transFigure.transform(inax_position)
+    x = infig_position[0]
+    y = infig_position[1]
+    width *= rect[2]
+    height *= rect[3]  # <= Typo was here
+    subax = fig.add_axes([x,y,width,height], projection=ccrs.Mercator())
+    x_labelsize = subax.get_xticklabels()[0].get_size()
+    y_labelsize = subax.get_yticklabels()[0].get_size()
+    x_labelsize *= rect[2]**0.5
+    y_labelsize *= rect[3]**0.5
+    subax.xaxis.set_tick_params(labelsize=x_labelsize)
+    subax.yaxis.set_tick_params(labelsize=y_labelsize)
+
+    x1 = -84.4 - 6.25
+    x2 = -84.4 + 6.25
+    y1 = 33.7 - 4.5
+    y2 = 33.7 + 4
+    subax.set_extent([x1, x2, y1, y2], ccrs.Geodetic())
+    #subax.coastlines()
+
+    states_provinces = cfeature.NaturalEarthFeature(
+        category='cultural',
+        name='admin_1_states_provinces_lines',
+        scale='50m',
+        facecolor='none')
+    subax.add_feature(cfeature.COASTLINE, edgecolor='k', linewidth=0.8)
+    subax.add_feature(states_provinces, edgecolor='k', linewidth=0.5)
+
+    subax.add_feature(shape_feature)
+
+
+    return subax
+
+def scale_bar(ax, length=None, location=(0.5, 0.05), linewidth=3):
+    """
+    ax is the axes to draw the scalebar on.
+    length is the length of the scalebar in km.
+    location is center of the scalebar in axis coordinates.
+    (ie. 0.5 is the middle of the plot)
+    linewidth is the thickness of the scalebar.
+    """
+    #Get the limits of the axis in lat long
+    llx0, llx1, lly0, lly1 = ax.get_extent(ccrs.PlateCarree())
+    #Make tmc horizontally centred on the middle of the map,
+    #vertically at scale bar location
+    # sbllx = (llx1 + llx0) / 2
+    # sblly = lly0 + (lly1 - lly0) * location[1]
+    sbllx = llx0 + (llx1 - llx0) * location[0]
+    sblly = (lly1 + lly0) / 2
+    tmc = ccrs.TransverseMercator(sbllx, sblly)
+    #Get the extent of the plotted area in coordinates in metres
+    x0, x1, y0, y1 = ax.get_extent(tmc)
+    #Turn the specified scalebar location into coordinates in metres
+    # sbx = x0 * location[0]
+    # sby = y0 + (y1 - y0) * location[1]
+    sbx = x0 + (x1 - x0) * location[0]
+    sby = y0 * location[1]
+
+    #Calculate a scale bar length if none has been given
+    #(Theres probably a more pythonic way of rounding the number but this works)
+    if not length:
+        length = (y1 - y0) / 5000 #in km
+        ndim = int(np.floor(np.log10(length))) #number of digits in number
+        length = round(length, -ndim) #round to 1sf
+        #Returns numbers starting with the list
+        def scale_number(x):
+            if str(x)[0] in ['1', '2', '5']: return int(x)
+            else: return scale_number(x - 10 ** ndim)
+        length = scale_number(length)
+
+    #Generate the x coordinate for the ends of the scalebar
+    bar_xs = [sbx, sbx]
+    bar_ys = [sby, sby + length * 1000]
+    sby0 = sby
+    for i in range(3):
+        # Plot the scalebar
+        ax.plot(bar_xs, bar_ys, transform=tmc, color='k', linewidth=linewidth)
+        bar_ys = np.array(bar_ys) + length * 1000
+        ax.plot(bar_xs, bar_ys, transform=tmc, color='white', linewidth=linewidth)
+        bar_ys = np.array(bar_ys) + length * 1000
+    sbyF = bar_ys[1] - length*1000
+    #Plot the scalebar label
+    text = ax.text(sbx - length*200, sby0, '  0 km', transform=tmc,
+            horizontalalignment='right', verticalalignment='center', color='white', weight='normal')
+    text = ax.text(sbx - length*200, sbyF, '600 km', transform=tmc,
+            horizontalalignment='right', verticalalignment='center', color='white', weight='normal')
+
+subax = add_subplot_axes(ax, [0.4, 0.05, 0.6, 0.9])  # from left, from bot, width, height
+
+subax.outline_patch.set_edgecolor('white')
+subax.outline_patch.set_linewidth(1.4)
+
+for face in [0, 1, 3, 4, 5]:
+    da = ds['SpeciesConc_Rn222'].isel(time=0, nf=face, lev=level).squeeze()
+    draw_minor_grid_boxes(subax, grid.xe(face), grid.ye(face), alpha=0.5)
+    subax.pcolormesh(grid.xe(face), grid.ye(face), da.values, vmin=0, vmax=3e-20, cmap='cividis', transform=ccrs.PlateCarree())
+
+x1 = -84.4 - 6.25
+x2 = -84.4 + 6.25
+y1 = 33.7 - 4.5
+y2 = 33.7 + 4
+ax.plot([x1, x1, x2, x2, x1], [y1, y2, y2, y1, y1], color='white', linewidth=2, transform=ccrs.PlateCarree())
+
+# for face in range(6):
+#     if face == 3: continue
+#
+#     xx = grid.xe(i)
+#     yy = grid.ye(i)
+#
+#     draw_minor_grid_boxes(subax, xx, yy)
+    #
+    # xx, yy = figax.transform_xy(experiment.grid.xe(face), experiment.grid.ye(face))
+    #
+    # face_data = select_face(da, face=face, key_lut=experiment.key_lut)
+    #
+    # # Draw grid
+    # if face in [0, 1, 3, 4]:
+    #     draw_minor_grid_boxes(figax, xx, yy, linewidth=0.08)
+    # if face in [5]:
+    #     draw_minor_grid_boxes(figax, xx, yy, linewidth=0.06)
+    # if face in [2]:
+    #     draw_minor_grid_boxes(figax, xx, yy, linewidth=0.15)
+    # draw_major_grid_boxes(figax, xx, yy, linewidth=1)
+    #
+    # # Plot data
+    # pcolormesh = plot_pcolomesh(figax, xx, yy, face_data, vmin=vmin, vmax=vmax)
+
+# scale_bar(figax.ax, 100, location=(-0.8, 0.2))
+scale_bar(subax, 100, location=(0.95, 0.6))
+#
+atl_x = -84.4
+atl_y = 34
+subax.text(atl_x, atl_y, f'Atlanta',
+              horizontalalignment='center', verticalalignment='bottom', weight='normal', color='white', transform=ccrs.PlateCarree())
+
 plt.savefig('temp-mo.png', dpi=100, facecolor='#151515', edgecolor='#151515')
 # plt.show()
