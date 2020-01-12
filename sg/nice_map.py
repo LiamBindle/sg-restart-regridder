@@ -179,12 +179,13 @@ grid = sg.grids.StretchedGrid(48, 15, 33.7, 275.6)
 ds = xr.open_dataset('/extra-space/GCHP.SpeciesConc.20160113_1230z.nc4')
 
 plt.figure(figsize=(12,6))
-ax = plt.axes(projection=ccrs.Robinson(), )
+ax = plt.axes(projection=ccrs.Mollweide(), )
 # ax.coastlines(linewidth=0.3, color='#656565')
 ax.add_feature(cartopy.feature.BORDERS, linewidth=0.3, edgecolor='k')
 ax.add_feature(cartopy.feature.COASTLINE, linewidth=0.3, edgecolor='k')
 ax.set_global()
 ax.outline_patch.set_edgecolor('#151515')
+ax.background_patch.set_facecolor('#15151550')
 #ax.background_patch.set_fill(False)
 
 for i in [2]:#[5, 4, 3, 1, 0, 2][::-1]:
@@ -203,5 +204,5 @@ for i in [5, 4, 3, 1, 0][::-1]:
     xx[xx > 180] -= 360
     plot_pcolomesh(ax, xx, yy, da.values, vmin=0, vmax=3e-20, cmap='cividis')
     # draw_polygons(ax, xx, yy, da.values)
-plt.savefig('temp-ro.png', dpi=100, facecolor='#151515', edgecolor='#151515')
+plt.savefig('temp-mo.png', dpi=100, facecolor='#151515', edgecolor='#151515')
 # plt.show()
