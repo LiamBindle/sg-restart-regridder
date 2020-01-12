@@ -219,7 +219,7 @@ plt.text(-0.14, 0.025, f'{time.year:4d}-{time.month:02d}-{time.day:02d} {time.ho
 plt.text(-0.14, -0.1, f'Radon-222 concentration (model level 17)\nGCHPctm 13.0.0-alpha.0\nC48 (stretch=15x) transport tracer simulation', color='white', fontsize=12, transform=ax.transAxes, horizontalalignment='left', verticalalignment='bottom', linespacing=1.4)
 
 
-fname = r'/home/liam/sg-restart-regridder/atlanta/City_of_Atlanta_Neighborhood_Statistical_Areas.shp'
+fname = r'/my-projects/sg-demo/atlanta/City_of_Atlanta_Neighborhood_Statistical_Areas.shp'
 shape_feature = ShapelyFeature(Reader(fname).geometries(),
                                ccrs.PlateCarree(), edgecolor='white', linewidth=0.5, facecolor='white')
 
