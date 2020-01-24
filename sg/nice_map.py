@@ -4,8 +4,11 @@ import matplotlib.pyplot as plt
 import matplotlib.colors
 import cartopy
 import shapely.geometry
+import rasterio
 from tqdm import tqdm
 import pyproj
+
+import matplotlib.patheffects as path_effects
 
 import xarray as xr
 
@@ -74,8 +77,8 @@ def draw_minor_grid_boxes(ax, xx, yy, **kwargs):
         for s, e in zip(start, end):
             ax.plot(x[s:e], y[s:e], transform=ccrs.PlateCarree(), **kwargs)
 
-cmap = plt.cm.get_cmap('cividis')
-norm = plt.Normalize(0, 3e-20)
+cmap = plt.cm.get_cmap('viridis')
+norm = plt.Normalize(0, 60)
 
 def enhance_gridbox_edges(box_xy: np.array, res):
     temp_proj = pyproj.Proj(ccrs.Gnomonic(
@@ -128,7 +131,7 @@ def draw_polygons(ax, xx, yy, data, **kwargs):
     crossing_indexes = np.argwhere(cross_pm_or_am)
     for idx in crossing_indexes:
         box = shapely.geometry.LinearRing(boxes[tuple(idx)])
-        far_from_the_prime_meridian = shapely.geometry.LineString([(-160, -90), (-160, 90)])
+        far_from_the_prime_meridian = shapely.geometry.LineString([(80, -90), (80, 90)])
         if box.crosses(far_from_the_prime_meridian):
             am[tuple(idx)] = False
         else:
@@ -141,7 +144,7 @@ def draw_polygons(ax, xx, yy, data, **kwargs):
     for idx in pm_idx:
         enhanced_xy = enhance_gridbox_edges(boxes[tuple(idx)], 60)
         poly = shapely.geometry.Polygon(enhanced_xy)
-        linewidth = max([0.06, np.log(poly.length / 4) * 0.2])
+        linewidth = max([0.02, np.log(poly.length / 4) * 0.2])
         linewidth=min([0.3, linewidth])
         ax.add_geometries([poly], ccrs.PlateCarree(), edgecolor='#15151550', facecolor='None', linewidth=linewidth, zorder=-0.5)
         poly = poly.buffer(eps)
@@ -157,7 +160,7 @@ def draw_polygons(ax, xx, yy, data, **kwargs):
         enhanced_xy = enhance_gridbox_edges(b, 60)
         enhanced_xy[:,0] = enhanced_xy[:,0] % 360
         poly = shapely.geometry.Polygon(enhanced_xy)
-        linewidth = max([0.06, np.log(poly.length / 4) * 0.2])
+        linewidth = max([0.02, np.log(poly.length / 4) * 0.2])
         linewidth=min([0.3, linewidth])
         ax.add_geometries([poly], ccrs.PlateCarree(), edgecolor='#15151550', facecolor='None', linewidth=linewidth,
                           zorder=-0.5)
@@ -171,7 +174,7 @@ def draw_polygons(ax, xx, yy, data, **kwargs):
     for idx in tqdm(neither_idx):
         enhanced_xy = enhance_gridbox_edges(boxes[tuple(idx)], 90)
         poly = shapely.geometry.LinearRing(enhanced_xy)
-        linewidth = max([0.06, np.log(poly.length / 4) * 0.2])
+        linewidth = max([0.02, np.log(poly.length / 4) * 0.2])
         linewidth=min([0.3, linewidth])
         ax.add_geometries([poly], ccrs.PlateCarree(), edgecolor='#15151550', facecolor='None', linewidth=linewidth,
                           zorder=-0.5)
@@ -179,17 +182,16 @@ def draw_polygons(ax, xx, yy, data, **kwargs):
         c = cmap(norm(data[tuple(idx)]))
         ax.add_geometries([poly, poly_buff.exterior], ccrs.PlateCarree(), edgecolor='None', facecolor=c, linewidth=0, zorder=-1)
 
-grid = sg.grids.StretchedGrid(48, 15, 33.7, 275.6)
-# grid = sg.grids.CubeSphere(48)
 
-from datetime import datetime
-import sys
-time = datetime(2016, 1, int(sys.argv[1]), int(sys.argv[2]), 30)
+#grid = sg.grids.StretchedGrid(48, 15, 33.7, 275.6)
+grid = sg.grids.StretchedGrid(48, 15, 36, -120)
+#grid = sg.grids.StretchedGrid(48, 3, 26, 115)
+#grid = sg.grids.CubeSphere(48)
 
-ds = xr.open_dataset(f'GCHP.SpeciesConc.{time.year:4d}{time.month:02d}{time.day:02d}_{time.hour:02d}{time.minute:02d}z.nc4')
+ds = xr.open_dataset('//extra-space/California/GCHP.SpeciesConc.20160716_1200z.nc4')
 
 plt.figure(figsize=(12,6))
-ax = plt.axes(projection=ccrs.Mollweide(), )
+ax = plt.axes(projection=ccrs.Robinson(), )
 # ax.coastlines(linewidth=0.3, color='#656565')
 ax.add_feature(cartopy.feature.BORDERS, linewidth=0.3, edgecolor='k')
 ax.add_feature(cartopy.feature.COASTLINE, linewidth=0.3, edgecolor='k')
@@ -198,173 +200,211 @@ ax.outline_patch.set_edgecolor('#151515')
 ax.background_patch.set_facecolor('#15151550')
 #ax.background_patch.set_fill(False)
 
-for i in [2]:#[5, 4, 3, 1, 0, 2][::-1]:
-    level = 17
-    da = ds['SpeciesConc_Rn222'].isel(time=0, nf=i, lev=level).squeeze()#.transpose('Xdim', 'Ydim')
-    xx = grid.xe(i)
-    yy = grid.ye(i)
-    # plot_pcolomesh(ax, xx, yy, da.values, vmin=0, vmax=3e-20, cmap='cividis')
-    xx[xx > 180] -= 360
-    draw_polygons(ax, xx, yy, da.values)
-for i in [5, 4, 3, 1, 0][::-1]:
-    level = 17
-    da = ds['SpeciesConc_Rn222'].isel(time=0, nf=i, lev=level).squeeze()#.transpose('Xdim', 'Ydim')
+for i in range(6):
+    level = 0
+    da = ds['SpeciesConc_O3'].isel(time=0, nf=i, lev=level).squeeze()#.transpose('Xdim', 'Ydim')
     xx = grid.xe(i)
     yy = grid.ye(i)
     xx[xx > 180] -= 360
-    plot_pcolomesh(ax, xx, yy, da.values, vmin=0, vmax=3e-20, cmap='cividis')
-    # draw_polygons(ax, xx, yy, da.values)
-
-plt.text(-0.14, 0.025, f'{time.year:4d}-{time.month:02d}-{time.day:02d} {time.hour:02d}:{time.minute:02d}Z', color='white', fontsize=16, transform=ax.transAxes, horizontalalignment='left', verticalalignment='bottom')
-plt.text(-0.14, -0.1, f'Radon-222 concentration (model level 17)\nGCHPctm 13.0.0-alpha.0\nC48 (stretch=15x) transport tracer simulation', color='white', fontsize=12, transform=ax.transAxes, horizontalalignment='left', verticalalignment='bottom', linespacing=1.4)
-
+    if i == 2:
+        draw_polygons(ax, xx, yy, da.values * 1e9, vmin=0, vmax=60, cmap='viridis')
+    else:
+        plot_pcolomesh(ax, xx, yy, da.values * 1e9, vmin=0, vmax=60, cmap='viridis')
 
 # fname = r'/my-projects/sg-demo/atlanta/City_of_Atlanta_Neighborhood_Statistical_Areas.shp'
 # shape_feature = ShapelyFeature(Reader(fname).geometries(),
 #                                ccrs.PlateCarree(), edgecolor='white', linewidth=0.5, facecolor='white')
 #
 #
-# def add_subplot_axes(ax,rect,axisbg='w'):
-#     fig = plt.gcf()
-#     box = ax.get_position()
-#     width = box.width
-#     height = box.height
-#     inax_position  = ax.transAxes.transform(rect[0:2])
-#     transFigure = fig.transFigure.inverted()
-#     infig_position = transFigure.transform(inax_position)
-#     x = infig_position[0]
-#     y = infig_position[1]
-#     width *= rect[2]
-#     height *= rect[3]  # <= Typo was here
-#     subax = fig.add_axes([x,y,width,height], projection=ccrs.Mercator())
-#     x_labelsize = subax.get_xticklabels()[0].get_size()
-#     y_labelsize = subax.get_yticklabels()[0].get_size()
-#     x_labelsize *= rect[2]**0.5
-#     y_labelsize *= rect[3]**0.5
-#     subax.xaxis.set_tick_params(labelsize=x_labelsize)
-#     subax.yaxis.set_tick_params(labelsize=y_labelsize)
+
+def add_features(ax, fname, attr_filter=None, **kwargs):
+    reader = Reader(fname)
+    if attr_filter:
+        geometries = []
+        for r in reader.records():
+            if r.attributes[attr_filter[0]] in attr_filter[1]:
+                geometries.append(r.geometry)
+        features = ShapelyFeature(geometries, crs=ccrs.PlateCarree())
+    else:
+        features = ShapelyFeature(Reader(fname).geometries(), ccrs.PlateCarree())
+    kwargs.setdefault('edgecolor', '#151515')
+    kwargs.setdefault('linewidth', 0.5)
+    ax.add_feature(features, **kwargs)
+
+
+def add_subplot_axes(ax,rect,axisbg='w'):
+    fig = plt.gcf()
+    box = ax.get_position()
+    width = box.width
+    height = box.height
+    inax_position  = ax.transAxes.transform(rect[0:2])
+    transFigure = fig.transFigure.inverted()
+    infig_position = transFigure.transform(inax_position)
+    x = infig_position[0]
+    y = infig_position[1]
+    width *= rect[2]
+    height *= rect[3]  # <= Typo was here
+    subax = fig.add_axes([x,y,width,height], projection=ccrs.Mercator())
+    x_labelsize = subax.get_xticklabels()[0].get_size()
+    y_labelsize = subax.get_yticklabels()[0].get_size()
+    x_labelsize *= rect[2]**0.5
+    y_labelsize *= rect[3]**0.5
+    subax.xaxis.set_tick_params(labelsize=x_labelsize)
+    subax.yaxis.set_tick_params(labelsize=y_labelsize)
+
+    x1 = -124.409591-0.5
+    x2 = -114.131211+0.5
+    y1 = 32.53415-0.5
+    y2 = 42.009518+0.5
+    subax.set_extent([x1, x2, y1, y2], ccrs.Geodetic())
+    #subax.coastlines()
+
+    states_provinces = cfeature.NaturalEarthFeature(
+        category='cultural',
+        name='admin_1_states_provinces_lines',
+        scale='50m',
+        facecolor='none')
+    subax.add_feature(cfeature.COASTLINE, edgecolor='k', linewidth=0.8)
+    subax.add_feature(states_provinces, edgecolor='k', linewidth=0.5)
+
+    # subax.add_feature(shape_feature)
+
+
+    return subax
+
+def scale_bar(ax, length=None, location=(0.5, 0.05), linewidth=3):
+    """
+    ax is the axes to draw the scalebar on.
+    length is the length of the scalebar in km.
+    location is center of the scalebar in axis coordinates.
+    (ie. 0.5 is the middle of the plot)
+    linewidth is the thickness of the scalebar.
+    """
+    #Get the limits of the axis in lat long
+    llx0, llx1, lly0, lly1 = ax.get_extent(ccrs.PlateCarree())
+    #Make tmc horizontally centred on the middle of the map,
+    #vertically at scale bar location
+    # sbllx = (llx1 + llx0) / 2
+    # sblly = lly0 + (lly1 - lly0) * location[1]
+    sbllx = llx0 + (llx1 - llx0) * location[0]
+    sblly = (lly1 + lly0) / 2
+    tmc = ccrs.TransverseMercator(sbllx, sblly)
+    #Get the extent of the plotted area in coordinates in metres
+    x0, x1, y0, y1 = ax.get_extent(tmc)
+    #Turn the specified scalebar location into coordinates in metres
+    # sbx = x0 * location[0]
+    # sby = y0 + (y1 - y0) * location[1]
+    sbx = x0 + (x1 - x0) * location[0]
+    sby = y0 * location[1]
+
+    #Calculate a scale bar length if none has been given
+    #(Theres probably a more pythonic way of rounding the number but this works)
+    if not length:
+        length = (y1 - y0) / 5000 #in km
+        ndim = int(np.floor(np.log10(length))) #number of digits in number
+        length = round(length, -ndim) #round to 1sf
+        #Returns numbers starting with the list
+        def scale_number(x):
+            if str(x)[0] in ['1', '2', '5']: return int(x)
+            else: return scale_number(x - 10 ** ndim)
+        length = scale_number(length)
+
+    #Generate the x coordinate for the ends of the scalebar
+    bar_xs = [sbx, sbx]
+    bar_ys = [sby, sby + length * 1000]
+    sby0 = sby
+    for i in range(3):
+        # Plot the scalebar
+        ax.plot(bar_xs, bar_ys, transform=tmc, color='k', linewidth=linewidth)
+        bar_ys = np.array(bar_ys) + length * 1000
+        ax.plot(bar_xs, bar_ys, transform=tmc, color='white', linewidth=linewidth)
+        bar_ys = np.array(bar_ys) + length * 1000
+    sbyF = bar_ys[1] - length*1000
+    #Plot the scalebar label
+    text = ax.text(sbx - length*200, sby0, '  0 km', transform=tmc,
+            horizontalalignment='right', verticalalignment='center', color='white', weight='bold')
+    text.set_path_effects([path_effects.Stroke(linewidth=1, foreground='black'),
+                           path_effects.Normal()])
+    text = ax.text(sbx - length*200, sbyF, '600 km', transform=tmc,
+            horizontalalignment='right', verticalalignment='center', color='white', weight='bold')
+    text.set_path_effects([path_effects.Stroke(linewidth=1, foreground='black'),
+                           path_effects.Normal()])
+
+subax = add_subplot_axes(ax, [0.25, 0.045, 0.8, 0.9])  # from left, from bot, width, height
+
+subax.outline_patch.set_edgecolor('white')
+subax.outline_patch.set_linewidth(2)
+subax.add_feature(cartopy.feature.BORDERS, linewidth=0.8, edgecolor='k')
+
+for face in [0, 1, 3, 4, 5]:
+    da = ds['SpeciesConc_O3'].isel(time=0, nf=face, lev=level).squeeze()  # .transpose('Xdim', 'Ydim')
+    xx = grid.xe(face)
+    yy = grid.ye(face)
+    xx[xx > 180] -= 360
+    plot_pcolomesh(subax, xx, yy, da.values * 1e9, vmin=0, vmax=60, cmap='viridis')
+    draw_minor_grid_boxes(subax, xx, yy, linewidth=0.3, alpha=0.4, color='#151515')
+
+
+    xx_majors = [xx[0, :], xx[-1, :], xx[:, 0], xx[:, -1]]
+    yy_majors = [yy[0, :], yy[-1, :], yy[:, 0], yy[:, -1]]
+    for xm, ym in zip(xx_majors, yy_majors):
+        subax.plot(xm, ym, transform=ccrs.PlateCarree(), color='#151515', linewidth=2)
+
+
+add_features(subax, '/home/liam/Downloads/foo/tl_2015_06_prisecroads.shp', attr_filter=('RTTYP', ['U']), alpha=0.5, facecolor='none')
+add_features(subax, '/home/liam/Downloads/foo/tl_2015_06_prisecroads.shp', attr_filter=('RTTYP', ['I']), alpha=0.5, linewidth=0.5,  facecolor='none')
+
+x1 = -124.409591 - 0.5
+x2 = -114.131211+0.5
+y1 = 32.53415-0.5
+y2 = 42.009518 +0.5
+
+
+img = rasterio.open('/home/liam/Downloads/SR_LR/SR_LR.tif')
+img_top_left = img.index(x1, y2)
+img_bot_right = img.index(x2, y1)
+img = img.read(1)[img_top_left[0]:img_bot_right[0], img_top_left[1]:img_bot_right[1]]
+
+from matplotlib.colors import LightSource
+ls = LightSource(azdeg=315, altdeg=45)
+shade = ls.hillshade(img, vert_exag=10000, fraction=1.0)
+
+cm = matplotlib.colors.LinearSegmentedColormap.from_list('my_cmap', [(0, 0, 0, 0.25), (0, 0, 0, 0)])
+subax.imshow(img, origin='upper', extent=[x1, x2, y1, y2], transform=ccrs.PlateCarree(), cmap=cm, zorder=10, vmax=206)
+
+ax.plot([x1, x1, x2, x2, x1], [y1, y2, y2, y1, y1], color='white', linewidth=2, transform=ccrs.PlateCarree())
+
+# for face in range(6):
+#     if face == 3: continue
 #
-#     x1 = -84.4 - 6.25
-#     x2 = -84.4 + 6.25
-#     y1 = 33.7 - 4.5
-#     y2 = 33.7 + 4
-#     subax.set_extent([x1, x2, y1, y2], ccrs.Geodetic())
-#     #subax.coastlines()
+#     xx = grid.xe(i)
+#     yy = grid.ye(i)
 #
-#     states_provinces = cfeature.NaturalEarthFeature(
-#         category='cultural',
-#         name='admin_1_states_provinces_lines',
-#         scale='50m',
-#         facecolor='none')
-#     subax.add_feature(cfeature.COASTLINE, edgecolor='k', linewidth=0.8)
-#     subax.add_feature(states_provinces, edgecolor='k', linewidth=0.5)
+#     draw_minor_grid_boxes(subax, xx, yy)
+    #
+    # xx, yy = figax.transform_xy(experiment.grid.xe(face), experiment.grid.ye(face))
+    #
+    # face_data = select_face(da, face=face, key_lut=experiment.key_lut)
+    #
+    # # Draw grid
+    # if face in [0, 1, 3, 4]:
+    #     draw_minor_grid_boxes(figax, xx, yy, linewidth=0.08)
+    # if face in [5]:
+    #     draw_minor_grid_boxes(figax, xx, yy, linewidth=0.06)
+    # if face in [2]:
+    #     draw_minor_grid_boxes(figax, xx, yy, linewidth=0.15)
+    # draw_major_grid_boxes(figax, xx, yy, linewidth=1)
+    #
+    # # Plot data
+    # pcolormesh = plot_pcolomesh(figax, xx, yy, face_data, vmin=vmin, vmax=vmax)
+
+# scale_bar(figax.ax, 100, location=(-0.8, 0.2))
+scale_bar(subax, 100, location=(0.95, 0.8))
+
 #
-#     subax.add_feature(shape_feature)
-#
-#
-#     return subax
-#
-# def scale_bar(ax, length=None, location=(0.5, 0.05), linewidth=3):
-#     """
-#     ax is the axes to draw the scalebar on.
-#     length is the length of the scalebar in km.
-#     location is center of the scalebar in axis coordinates.
-#     (ie. 0.5 is the middle of the plot)
-#     linewidth is the thickness of the scalebar.
-#     """
-#     #Get the limits of the axis in lat long
-#     llx0, llx1, lly0, lly1 = ax.get_extent(ccrs.PlateCarree())
-#     #Make tmc horizontally centred on the middle of the map,
-#     #vertically at scale bar location
-#     # sbllx = (llx1 + llx0) / 2
-#     # sblly = lly0 + (lly1 - lly0) * location[1]
-#     sbllx = llx0 + (llx1 - llx0) * location[0]
-#     sblly = (lly1 + lly0) / 2
-#     tmc = ccrs.TransverseMercator(sbllx, sblly)
-#     #Get the extent of the plotted area in coordinates in metres
-#     x0, x1, y0, y1 = ax.get_extent(tmc)
-#     #Turn the specified scalebar location into coordinates in metres
-#     # sbx = x0 * location[0]
-#     # sby = y0 + (y1 - y0) * location[1]
-#     sbx = x0 + (x1 - x0) * location[0]
-#     sby = y0 * location[1]
-#
-#     #Calculate a scale bar length if none has been given
-#     #(Theres probably a more pythonic way of rounding the number but this works)
-#     if not length:
-#         length = (y1 - y0) / 5000 #in km
-#         ndim = int(np.floor(np.log10(length))) #number of digits in number
-#         length = round(length, -ndim) #round to 1sf
-#         #Returns numbers starting with the list
-#         def scale_number(x):
-#             if str(x)[0] in ['1', '2', '5']: return int(x)
-#             else: return scale_number(x - 10 ** ndim)
-#         length = scale_number(length)
-#
-#     #Generate the x coordinate for the ends of the scalebar
-#     bar_xs = [sbx, sbx]
-#     bar_ys = [sby, sby + length * 1000]
-#     sby0 = sby
-#     for i in range(3):
-#         # Plot the scalebar
-#         ax.plot(bar_xs, bar_ys, transform=tmc, color='k', linewidth=linewidth)
-#         bar_ys = np.array(bar_ys) + length * 1000
-#         ax.plot(bar_xs, bar_ys, transform=tmc, color='white', linewidth=linewidth)
-#         bar_ys = np.array(bar_ys) + length * 1000
-#     sbyF = bar_ys[1] - length*1000
-#     #Plot the scalebar label
-#     text = ax.text(sbx - length*200, sby0, '  0 km', transform=tmc,
-#             horizontalalignment='right', verticalalignment='center', color='white', weight='normal')
-#     text = ax.text(sbx - length*200, sbyF, '600 km', transform=tmc,
-#             horizontalalignment='right', verticalalignment='center', color='white', weight='normal')
-#
-# subax = add_subplot_axes(ax, [0.4, 0.05, 0.6, 0.9])  # from left, from bot, width, height
-#
-# subax.outline_patch.set_edgecolor('white')
-# subax.outline_patch.set_linewidth(1.4)
-#
-# for face in [0, 1, 3, 4, 5]:
-#     da = ds['SpeciesConc_Rn222'].isel(time=0, nf=face, lev=level).squeeze()
-#     draw_minor_grid_boxes(subax, grid.xe(face), grid.ye(face), alpha=0.5)
-#     subax.pcolormesh(grid.xe(face), grid.ye(face), da.values, vmin=0, vmax=3e-20, cmap='cividis', transform=ccrs.PlateCarree())
-#
-# x1 = -84.4 - 6.25
-# x2 = -84.4 + 6.25
-# y1 = 33.7 - 4.5
-# y2 = 33.7 + 4
-# ax.plot([x1, x1, x2, x2, x1], [y1, y2, y2, y1, y1], color='white', linewidth=2, transform=ccrs.PlateCarree())
-#
-# # for face in range(6):
-# #     if face == 3: continue
-# #
-# #     xx = grid.xe(i)
-# #     yy = grid.ye(i)
-# #
-# #     draw_minor_grid_boxes(subax, xx, yy)
-#     #
-#     # xx, yy = figax.transform_xy(experiment.grid.xe(face), experiment.grid.ye(face))
-#     #
-#     # face_data = select_face(da, face=face, key_lut=experiment.key_lut)
-#     #
-#     # # Draw grid
-#     # if face in [0, 1, 3, 4]:
-#     #     draw_minor_grid_boxes(figax, xx, yy, linewidth=0.08)
-#     # if face in [5]:
-#     #     draw_minor_grid_boxes(figax, xx, yy, linewidth=0.06)
-#     # if face in [2]:
-#     #     draw_minor_grid_boxes(figax, xx, yy, linewidth=0.15)
-#     # draw_major_grid_boxes(figax, xx, yy, linewidth=1)
-#     #
-#     # # Plot data
-#     # pcolormesh = plot_pcolomesh(figax, xx, yy, face_data, vmin=vmin, vmax=vmax)
-#
-# # scale_bar(figax.ax, 100, location=(-0.8, 0.2))
-# scale_bar(subax, 100, location=(0.95, 0.6))
-# #
 # atl_x = -84.4
 # atl_y = 34
 # subax.text(atl_x, atl_y, f'Atlanta',
 #               horizontalalignment='center', verticalalignment='bottom', weight='normal', color='white', transform=ccrs.PlateCarree())
-
-plt.savefig(f'frames-no-overlay/{time.year:4d}{time.month:02d}{time.day:02d}_{time.hour:02d}{time.minute:02d}z.jpeg', dpi=100, facecolor='#151515', edgecolor='#151515')
+plt.savefig(f'foo.jpeg', dpi=100, facecolor='#151515', edgecolor='#151515')
 # plt.show()
