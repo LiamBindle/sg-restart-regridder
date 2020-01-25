@@ -1,3 +1,4 @@
+import sys
 import datetime
 
 import numpy as np
@@ -20,7 +21,12 @@ import rasterio
 import sg.grids
 import sg.plot
 
-time = datetime.datetime(2016, 7, 16, 12, 00)
+
+
+time = datetime.datetime(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
+
+OutputDir = ''
+GISDataDir=''
 field_name = 'SpeciesConc_O3'
 cmap_name = 'cividis'
 vmin = 20
@@ -199,7 +205,7 @@ grid = sg.grids.StretchedGrid(48, 15, 36, -120)
 #grid = sg.grids.StretchedGrid(48, 3, 26, 115)
 #grid = sg.grids.CubeSphere(48)
 
-ds = xr.open_dataset(f'//extra-space/California/GCHP.SpeciesConc.{time.year:04d}{time.month:02d}{time.day:02d}_{time.hour:02d}{time.minute:02d}z.nc4')
+ds = xr.open_dataset(f'{OutputDir}/GCHP.SpeciesConc.{time.year:04d}{time.month:02d}{time.day:02d}_{time.hour:02d}{time.minute:02d}z.nc4')
 
 plt.figure(figsize=(12,6))
 ax = plt.axes(projection=ccrs.Robinson(), )
@@ -360,14 +366,14 @@ for face in [0, 1, 3, 4, 5]:
         subax.plot(xm, ym, transform=ccrs.PlateCarree(), color='#151515', linewidth=0.6, alpha=0.4)
 
 
-add_features(subax, '/home/liam/Downloads/foo/tl_2015_06_prisecroads.shp', attr_filter=('RTTYP', ['U', 'I']), linewidth=0.4, edgecolor='#050505', facecolor='none')
+add_features(subax, f'{GISDataDir}/tl_2015_06_prisecroads.shp', attr_filter=('RTTYP', ['U', 'I']), linewidth=0.4, edgecolor='#050505', facecolor='none')
 
 x1 = overlay_x[0]
 x2 = overlay_x[1]
 y1 = overlay_y[0]
 y2 = overlay_y[1]
 
-img = rasterio.open('/home/liam/Downloads/SR_LR/SR_LR.tif')
+img = rasterio.open(f'{GISDataDir}/SR_LR.tif')
 img_top_left = img.index(x1, y2)
 img_bot_right = img.index(x2, y1)
 img = img.read(1)[img_top_left[0]:img_bot_right[0], img_top_left[1]:img_bot_right[1]]
