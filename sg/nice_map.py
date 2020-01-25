@@ -1,28 +1,35 @@
+import datetime
+
 import numpy as np
-import cartopy.crs as ccrs
+import xarray as xr
+
 import matplotlib.pyplot as plt
 import matplotlib.colors
+import matplotlib.patheffects as path_effects
+from matplotlib.colors import LightSource
+
 import cartopy
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+from cartopy.io.shapereader import Reader
+from cartopy.feature import ShapelyFeature
+import pyproj
 import shapely.geometry
 import rasterio
-from tqdm import tqdm
-import pyproj
-
-import matplotlib.patheffects as path_effects
-
-import xarray as xr
 
 import sg.grids
 import sg.plot
 
-import cartopy.feature as cfeature
+time = datetime.datetime(2016, 7, 16, 12, 00)
+field_name = 'SpeciesConc_O3'
+cmap_name = 'cividis'
+vmin = 20
+vmax = 60
+
+overlay_x = [-124.9, -113.7]
+overlay_y = [32, 40.1]
 
 
-from cartopy.io.shapereader import Reader
-from cartopy.feature import ShapelyFeature
-
-
-cmap_name ='cividis'
 
 
 def plot_pcolomesh(ax, xx, yy, data, **kwargs):
@@ -63,7 +70,7 @@ def plot_pcolomesh(ax, xx, yy, data, **kwargs):
 
 def draw_minor_grid_boxes(ax, xx, yy, **kwargs):
     kwargs.setdefault('linewidth', 0.3)
-    kwargs.setdefault('color', 'black')
+    kwargs.setdefault('color', '#151515')
     for x, y in zip(xx, yy):
         idx = np.argwhere(np.diff(np.sign(x % 360 - 180))).flatten()
         x360 = x % 360
@@ -82,7 +89,7 @@ def draw_minor_grid_boxes(ax, xx, yy, **kwargs):
             ax.plot(x[s:e], y[s:e], transform=ccrs.PlateCarree(), **kwargs)
 
 cmap = plt.cm.get_cmap(cmap_name)
-norm = plt.Normalize(20, 60)
+norm = plt.Normalize(vmin, vmax)
 
 def enhance_gridbox_edges(box_xy: np.array, res):
     temp_proj = pyproj.Proj(ccrs.Gnomonic(
@@ -149,7 +156,7 @@ def draw_polygons(ax, xx, yy, data, **kwargs):
         enhanced_xy = enhance_gridbox_edges(boxes[tuple(idx)], 60)
         poly = shapely.geometry.Polygon(enhanced_xy)
         linewidth = max([0.06, np.log(poly.length / 4) * 0.2])
-        linewidth=min([0.3, linewidth])
+        linewidth=min([0.5, linewidth])
         ax.add_geometries([poly], ccrs.PlateCarree(), edgecolor='#15151550', facecolor='None', linewidth=linewidth, zorder=-0.5)
         poly = poly.buffer(eps)
         c = cmap(norm(data[tuple(idx)]))
@@ -165,21 +172,21 @@ def draw_polygons(ax, xx, yy, data, **kwargs):
         enhanced_xy[:,0] = enhanced_xy[:,0] % 360
         poly = shapely.geometry.Polygon(enhanced_xy)
         linewidth = max([0.06, np.log(poly.length / 4) * 0.2])
-        linewidth=min([0.3, linewidth])
+        linewidth=min([0.5, linewidth])
         ax.add_geometries([poly], ccrs.PlateCarree(), edgecolor='#15151550', facecolor='None', linewidth=linewidth,
                           zorder=-0.5)
         poly = poly.buffer(eps)
         c = cmap(norm(data[tuple(idx)]))
-        ax.add_geometries([poly], ccrs.PlateCarree(), edgecolor='None', facecolor=c, linewidth=0.3, zorder=-1)
+        ax.add_geometries([poly], ccrs.PlateCarree(), edgecolor='None', facecolor=c, linewidth=0, zorder=-1)
 
 
     # Plot others
     neither_idx = np.argwhere(~neither)
-    for idx in tqdm(neither_idx):
+    for idx in neither_idx:
         enhanced_xy = enhance_gridbox_edges(boxes[tuple(idx)], 90)
         poly = shapely.geometry.LinearRing(enhanced_xy)
         linewidth = max([0.06, np.log(poly.length / 4) * 0.2])
-        linewidth=min([0.3, linewidth])
+        linewidth=min([0.5, linewidth])
         ax.add_geometries([poly], ccrs.PlateCarree(), edgecolor='#15151550', facecolor='None', linewidth=linewidth,
                           zorder=-0.5)
         poly_buff = poly.buffer(eps)
@@ -192,13 +199,12 @@ grid = sg.grids.StretchedGrid(48, 15, 36, -120)
 #grid = sg.grids.StretchedGrid(48, 3, 26, 115)
 #grid = sg.grids.CubeSphere(48)
 
-ds = xr.open_dataset('//extra-space/California/GCHP.SpeciesConc.20160716_1200z.nc4')
+ds = xr.open_dataset(f'//extra-space/California/GCHP.SpeciesConc.{time.year:04d}{time.month:02d}{time.day:02d}_{time.hour:02d}{time.minute:02d}z.nc4')
 
 plt.figure(figsize=(12,6))
 ax = plt.axes(projection=ccrs.Robinson(), )
-# ax.coastlines(linewidth=0.3, color='#656565')
-ax.add_feature(cartopy.feature.BORDERS, linewidth=0.3, edgecolor='k')
-ax.add_feature(cartopy.feature.COASTLINE, linewidth=0.3, edgecolor='k')
+ax.add_feature(cartopy.feature.BORDERS, linewidth=0.5, edgecolor='#050505')
+ax.add_feature(cartopy.feature.COASTLINE, linewidth=0.5, edgecolor='#050505')
 ax.set_global()
 ax.outline_patch.set_edgecolor('#151515')
 ax.background_patch.set_facecolor('#15151550')
@@ -206,24 +212,19 @@ ax.background_patch.set_facecolor('#15151550')
 
 for i in range(6):
     level = 0
-    da = ds['SpeciesConc_O3'].isel(time=0, nf=i, lev=level).squeeze()#.transpose('Xdim', 'Ydim')
+    da = ds[field_name].isel(time=0, nf=i, lev=level).squeeze()#.transpose('Xdim', 'Ydim')
     xx = grid.xe(i)
     yy = grid.ye(i)
     xx[xx > 180] -= 360
     if i == 2:
-        draw_polygons(ax, xx, yy, da.values * 1e9, vmin=20, vmax=60, cmap=cmap_name)
+        draw_polygons(ax, xx, yy, da.values * 1e9, vmin=vmin, vmax=vmax, cmap=cmap_name)
     else:
-        plot_pcolomesh(ax, xx, yy, da.values * 1e9, vmin=20, vmax=60, cmap=cmap_name)
+        plot_pcolomesh(ax, xx, yy, da.values * 1e9, vmin=vmin, vmax=vmax, cmap=cmap_name)
     xx_majors = [xx[0, :], xx[-1, :], xx[:, 0], xx[:, -1]]
     yy_majors = [yy[0, :], yy[-1, :], yy[:, 0], yy[:, -1]]
     for xm, ym in zip(xx_majors, yy_majors):
-        ax.plot(xm, ym, transform=ccrs.PlateCarree(), color='#151515', linewidth=0.6, alpha=0.8)
+        ax.plot(xm, ym, transform=ccrs.PlateCarree(), color='#151515', linewidth=1.2, alpha=0.8)
 
-# fname = r'/my-projects/sg-demo/atlanta/City_of_Atlanta_Neighborhood_Statistical_Areas.shp'
-# shape_feature = ShapelyFeature(Reader(fname).geometries(),
-#                                ccrs.PlateCarree(), edgecolor='white', linewidth=0.5, facecolor='white')
-#
-#
 
 def add_features(ax, fname, attr_filter=None, **kwargs):
     reader = Reader(fname)
@@ -260,10 +261,10 @@ def add_subplot_axes(ax,rect,axisbg='w'):
     subax.xaxis.set_tick_params(labelsize=x_labelsize)
     subax.yaxis.set_tick_params(labelsize=y_labelsize)
 
-    x1 = -124.409591 - 0.5
-    x2 = -114.131211 + 0.4
-    y1 = 32.53415 - 0.5
-    y2 = 40.1
+    x1 = overlay_x[0]
+    x2 = overlay_x[1]
+    y1 = overlay_y[0]
+    y2 = overlay_y[1]
     subax.set_extent([x1, x2, y1, y2], ccrs.Geodetic())
     #subax.coastlines()
 
@@ -272,8 +273,8 @@ def add_subplot_axes(ax,rect,axisbg='w'):
         name='admin_1_states_provinces_lines',
         scale='50m',
         facecolor='none')
-    subax.add_feature(cfeature.COASTLINE, edgecolor='k', linewidth=1)
-    subax.add_feature(states_provinces, edgecolor='k', linewidth=1)
+    subax.add_feature(cfeature.COASTLINE, edgecolor='#050505', linewidth=1.2)
+    subax.add_feature(states_provinces, edgecolor='#050505', linewidth=1.2)
 
     # subax.add_feature(shape_feature)
 
@@ -330,11 +331,11 @@ def scale_bar(ax, length=None, location=(0.5, 0.05), linewidth=3):
     sbyF = bar_ys[1] - length*1000
     #Plot the scalebar label
     text = ax.text(sbx - length*200, sby0, '  0 km', transform=tmc,
-            horizontalalignment='right', verticalalignment='center', color='black', weight='bold', fontsize=10)
+            horizontalalignment='right', verticalalignment='center', color='k', weight='bold', fontsize=10)
     text.set_path_effects([path_effects.Stroke(linewidth=1.2, foreground='whitesmoke'),
                            path_effects.Normal()])
     text = ax.text(sbx - length*200, sbyF, '600 km', transform=tmc,
-            horizontalalignment='right', verticalalignment='center', color='black', weight='bold', fontsize=10)
+            horizontalalignment='right', verticalalignment='center', color='k', weight='bold', fontsize=10)
     text.set_path_effects([path_effects.Stroke(linewidth=1.2, foreground='whitesmoke'),
                            path_effects.Normal()])
 
@@ -342,41 +343,39 @@ subax = add_subplot_axes(ax, [0.25, 0.1, 0.8, 0.9])  # from left, from bot, widt
 
 subax.outline_patch.set_edgecolor('white')
 subax.outline_patch.set_linewidth(4)
-subax.add_feature(cartopy.feature.BORDERS, linewidth=1, edgecolor='k')
+subax.add_feature(cartopy.feature.BORDERS, linewidth=1.2, edgecolor='#050505')
 
 for face in [0, 1, 3, 4, 5]:
-    da = ds['SpeciesConc_O3'].isel(time=0, nf=face, lev=level).squeeze()  # .transpose('Xdim', 'Ydim')
+    da = ds[field_name].isel(time=0, nf=face, lev=level).squeeze()  # .transpose('Xdim', 'Ydim')
     xx = grid.xe(face)
     yy = grid.ye(face)
     xx[xx > 180] -= 360
-    plot_pcolomesh(subax, xx, yy, da.values * 1e9, vmin=20, vmax=60, cmap=cmap_name)
+    plot_pcolomesh(subax, xx, yy, da.values * 1e9, vmin=vmin, vmax=vmax, cmap=cmap_name)
     draw_minor_grid_boxes(subax, xx, yy, linewidth=0.3, alpha=0.4, color='#151515')
 
 
     xx_majors = [xx[0, :], xx[-1, :], xx[:, 0], xx[:, -1]]
     yy_majors = [yy[0, :], yy[-1, :], yy[:, 0], yy[:, -1]]
     for xm, ym in zip(xx_majors, yy_majors):
-        subax.plot(xm, ym, transform=ccrs.PlateCarree(), color='#151515', linewidth=0.6, alpha=0.3)
+        subax.plot(xm, ym, transform=ccrs.PlateCarree(), color='#151515', linewidth=0.6, alpha=0.4)
 
 
-add_features(subax, '/home/liam/Downloads/foo/tl_2015_06_prisecroads.shp', attr_filter=('RTTYP', ['U', 'I']), linewidth=0.3, facecolor='none')
+add_features(subax, '/home/liam/Downloads/foo/tl_2015_06_prisecroads.shp', attr_filter=('RTTYP', ['U', 'I']), linewidth=0.4, edgecolor='#050505', facecolor='none')
 
-x1 = -124.409591-0.5
-x2 = -114.131211+0.4
-y1 = 32.53415-0.5
-y2 = 40.1
-
+x1 = overlay_x[0]
+x2 = overlay_x[1]
+y1 = overlay_y[0]
+y2 = overlay_y[1]
 
 img = rasterio.open('/home/liam/Downloads/SR_LR/SR_LR.tif')
 img_top_left = img.index(x1, y2)
 img_bot_right = img.index(x2, y1)
 img = img.read(1)[img_top_left[0]:img_bot_right[0], img_top_left[1]:img_bot_right[1]]
 
-from matplotlib.colors import LightSource
 ls = LightSource(azdeg=315, altdeg=45)
 shade = ls.hillshade(img, vert_exag=10000, fraction=1.0)
 
-cm = matplotlib.colors.LinearSegmentedColormap.from_list('my_cmap', [(0, 0, 0, 0.25), (0, 0, 0, 0)])
+cm = matplotlib.colors.LinearSegmentedColormap.from_list('my_cmap', [(0, 0, 0, 0.4), (0, 0, 0, 0)])
 subax.imshow(img, origin='upper', extent=[x1, x2, y1, y2], transform=ccrs.PlateCarree(), cmap=cm, zorder=10, vmax=206)
 
 ax.plot([x1, x1, x2, x2, x1], [y1, y2, y2, y1, y1], color='white', linewidth=2, transform=ccrs.PlateCarree())
@@ -388,12 +387,10 @@ cities = {
     'Los Angeles': (-118.24, 34.05),
     'San Jose': (-121.89, 37.33),
     'San Diego': (-117.16, 32.72),
-    # 'Las Vegas': (-115.13, 36.17),
-    # 'Tijuana': (-117.03, 32.51)
 }
 
 for name, coord in cities.items():
-    subax.scatter(*coord, color='whitesmoke', edgecolor='k', linewidth=1, s=15, transform=ccrs.PlateCarree(), zorder=100)
+    subax.scatter(*coord, color='whitesmoke', edgecolor='#151515', linewidth=1, s=15, transform=ccrs.PlateCarree(), zorder=100)
     v_offset = 0.1
     h_offset = 0
     if name == 'San Jose':
@@ -403,25 +400,20 @@ for name, coord in cities.items():
         name,
         transform=ccrs.PlateCarree(),
         horizontalalignment='center', verticalalignment='bottom',
-        color='black', weight='bold', fontsize=10,
+        color='k', weight='bold', fontsize=10,
     )
     text.set_path_effects([path_effects.Stroke(linewidth=1.2, foreground='whitesmoke'),
                            path_effects.Normal()])
 
 scale_bar(subax, 100, location=(0.95, 0.70))
-# plt.tight_layout()
-cb = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap_name), orientation='horizontal', pad=0.04,  ax=ax,aspect=60, fraction=0.02, ticks=[20, 40, 60], drawedges=False)
+cb = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap_name), orientation='horizontal', pad=0.04,  ax=ax,aspect=60, fraction=0.02, ticks=[vmin, (vmin+vmax)//2, vmax], drawedges=False)
 cbxtick_obj = plt.getp(cb.ax.axes, 'xticklabels')
 plt.setp(cbxtick_obj, color='white')
 plt.tight_layout()
-cb.ax.set_xticklabels(['20 ppb', '40 ppb', '60 ppb'])
-
-import datetime
-
-time = datetime.datetime(2016, 1, 1, 11, 30)
+cb.ax.set_xticklabels([f'{vmin} ppb', f'{(vmin+vmax)//2} ppb', f'{vmax} ppb'])
 
 plt.text(-0.07, 0.025, f'{time.year:4d}-{time.month:02d}-{time.day:02d} {time.hour:02d}:{time.minute:02d}Z', color='white', fontsize=14, transform=ax.transAxes, horizontalalignment='left', verticalalignment='bottom')
 plt.text(-0.07, -0.08, f'Surface-level Ozone\nGCHPctm 13.0.0-alpha.0\nC48 (stretch=15x)', color='white', fontsize=10, transform=ax.transAxes, horizontalalignment='left', verticalalignment='bottom', linespacing=1.4)
 
-plt.savefig(f'foo-{cmap_name}.jpeg', dpi=300, facecolor='#151515', edgecolor='#151515')
+plt.savefig(f'{field_name}-{time.year:04d}{time.month:02d}{time.day:02d}_{time.hour:02d}{time.minute:02d}z.jpeg', dpi=300, facecolor='#151515', edgecolor='#151515')
 # plt.show()
