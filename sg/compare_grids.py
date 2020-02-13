@@ -81,28 +81,12 @@ def colocated_centers(xc1, yc1, xc2, yc2, dist_tol_abs):
     co2 = tuple([idx_list for idx_list in np.moveaxis(np.array(co2), 0, -1)])
     return co1, co2
 
-if __name__=='__main__':
-    import sg.grids
-    import matplotlib.pyplot as plt
-    import pyproj
-
-    ax = plt.axes(projection=ccrs.PlateCarree())
-    ax.set_global()
-    ax.coastlines(linewidth=0.8)
-
-    dist_tol_abs=50e3
-    area_tol_rel=0.4
-
-    control = sg.grids.CubeSphere(48)
-    target_lat=33.7
-    target_lon=275.6
-    experiment = sg.grids.StretchedGrid(24, 2, target_lat, target_lon)
-
+def comparable_gridboxes(control_grid, exp_grid, dist_tol_abs, area_tol_rel, target_lat, target_lon):
     # Get center coordinates
-    control_xc = np.array([control.xc(i) for i in range(6)])
-    control_yc = np.array([control.yc(i) for i in range(6)])
-    experiment_xc = np.array([experiment.xc(i) for i in range(6)])
-    experiment_yc = np.array([experiment.yc(i) for i in range(6)])
+    control_xc = np.array([control_grid.xc(i) for i in range(6)])
+    control_yc = np.array([control_grid.yc(i) for i in range(6)])
+    experiment_xc = np.array([exp_grid.xc(i) for i in range(6)])
+    experiment_yc = np.array([exp_grid.yc(i) for i in range(6)])
 
     # Convert coordinates to equidistant projection with units of meters
     equidistant_meters = pyproj.Proj(init='epsg:4087')
@@ -110,18 +94,19 @@ if __name__=='__main__':
     experiment_xc_m, experiment_yc_m = equidistant_meters(experiment_xc, experiment_yc)
 
     # Find colocated centers with a tolerance of 100km
-    co1, co2 = colocated_centers(control_xc_m, control_yc_m, experiment_xc_m, experiment_yc_m, dist_tol_abs=dist_tol_abs)
+    co1, co2 = colocated_centers(control_xc_m, control_yc_m, experiment_xc_m, experiment_yc_m,
+                                 dist_tol_abs=dist_tol_abs)
 
     # Get polygons
-    control_boxes_xy = np.ndarray((6, *control_xc.shape[1:], 4, 2))          # [face, i, i, pts, xy]
-    experiment_boxes_xy = np.ndarray((6, *experiment_xc.shape[1:], 4, 2))    # [face, i, i, pts, xy]
+    control_boxes_xy = np.ndarray((6, *control_xc.shape[1:], 4, 2))  # [face, i, i, pts, xy]
+    experiment_boxes_xy = np.ndarray((6, *experiment_xc.shape[1:], 4, 2))  # [face, i, i, pts, xy]
     for i in range(6):
-        xx = control.xe(i)
+        xx = control_grid.xe(i)
         xx[xx > 180] -= 360
-        _, _, control_boxes_xy[i, ...] = get_am_and_pm_masks_and_polygons_outline(xx, control.ye(i))
-        xx = experiment.xe(i)
+        _, _, control_boxes_xy[i, ...] = get_am_and_pm_masks_and_polygons_outline(xx, control_grid.ye(i))
+        xx = exp_grid.xe(i)
         xx[xx > 180] -= 360
-        _, _, experiment_boxes_xy[i, ...] = get_am_and_pm_masks_and_polygons_outline(xx, experiment.ye(i))
+        _, _, experiment_boxes_xy[i, ...] = get_am_and_pm_masks_and_polygons_outline(xx, exp_grid.ye(i))
 
     # Colocated boxes
     co1_boxes_xy = control_boxes_xy[co1]
@@ -141,14 +126,112 @@ if __name__=='__main__':
     # Find boxes with similar areas
     similar_areas = np.abs(co2_box_areas - co1_box_areas) / co1_box_areas < area_tol_rel
 
-    [draw_minor_grid_boxes(ax, control.xe(i), control.ye(i), color='blue') for i in range(6)]
-    draw_minor_grid_boxes(ax, experiment.xe(5), experiment.ye(5))
+    co1_final = tuple([indexes[similar_areas] for indexes in co1])
+    co2_final = tuple([indexes[similar_areas] for indexes in co2])
+    return co1_final, co2_final
 
 
+def minimize_objective(sf, target_lat, target_lon, cs_res=48, sf_res=24, dist_tol_abs=40e3, area_tol_rel=0.2):
+    sf = np.asscalar(np.array(sf))
+    target_lat = np.asscalar(np.array(target_lat))
+    target_lon = np.asscalar(np.array(target_lon))
+    _, comparable = comparable_gridboxes(
+        sg.grids.CubeSphere(cs_res),
+        sg.grids.StretchedGrid(sf_res, sf, target_lat, target_lon),
+        dist_tol_abs=dist_tol_abs, area_tol_rel=area_tol_rel,
+        target_lat=target_lat,
+        target_lon=target_lon
+    )
+    print([sf, target_lat, target_lon], -np.count_nonzero(comparable[0] == 5))
+    return -np.count_nonzero(comparable[0] == 5)
 
-    plt.scatter(control_xc[co1][similar_areas], control_yc[co1][similar_areas], color='red', s=50)
-    plt.scatter(experiment_xc[co2][similar_areas], experiment_yc[co2][similar_areas], color='pink', s=50)
 
-    print(co1, co2)
-    plt.show()
+if __name__=='__main__':
+    import sg.grids
+    import matplotlib.pyplot as plt
+    import pyproj
+
+
+    import scipy.optimize
+
+    # Global settings
+    cs_res = 48
+    sf_res = 24
+    max_aspect_ratio = 1.5   # center box area / edge box area
+    ll_pm = 0.5              # lat-lon plus/minus around initial guess
+    dist_tol = 50e3
+    area_tol = 0.2
+
+    # Initial guesses
+    target_lat = 33.7
+    target_lon = 275.6
+
+    # Optimize the stretch factor for matching box areas
+    dist_tol_abs=2*dist_tol  # moderate distance tolerance
+    area_tol_rel=area_tol    # small area tolerance
+    sf_range=(cs_res/sf_res, cs_res/sf_res*max_aspect_ratio)
+    sf_opt = scipy.optimize.brute(
+        lambda sf: minimize_objective(
+            sf=sf,
+            target_lat=target_lat,
+            target_lon=target_lon,
+            cs_res=cs_res,
+            sf_res=sf_res,
+            dist_tol_abs=dist_tol_abs,
+            area_tol_rel=area_tol_rel
+        ),
+        [sf_range],
+        Ns=21,
+        finish=None
+    )
+
+    # Optimize the position factor
+    dist_tol_abs=dist_tol # smaller distance tolerance
+    area_tol_rel=area_tol  # small area tolerance
+    lat_range=(target_lat-ll_pm, target_lat+ll_pm)
+    lon_range=(target_lon-ll_pm, target_lon+ll_pm)
+    lat_opt, lon_opt = scipy.optimize.brute(
+        lambda x: minimize_objective(
+            target_lat=x[0],
+            target_lon=x[1],
+            sf=sf_opt,
+            cs_res=cs_res,
+            sf_res=sf_res,
+            dist_tol_abs=dist_tol_abs,
+            area_tol_rel=area_tol_rel
+        ),
+        ranges=[lat_range, lon_range],
+        Ns=11,
+        finish=None
+    )
+
+    print(f'sf={sf_opt}, lat={lat_opt}, lon={lon_opt}')
+
+
+    # sf=2.35
+    # target_lat=34.1 #33.97
+    # target_lon=-83.7 #276.0
+    # dist_tol_abs=40e3
+    # area_tol_rel=0.2
+    #
+    # control = sg.grids.CubeSphere(48)
+    # experiment = sg.grids.StretchedGrid(24, sf, target_lat, target_lon)
+    # co1, co2 = comparable_gridboxes(control, experiment, dist_tol_abs, area_tol_rel, target_lat=target_lat, target_lon=target_lon)
+    #
+    #
+    # ax = plt.axes(projection=ccrs.PlateCarree())
+    # ax.set_global()
+    # ax.coastlines(linewidth=0.8)
+    # control_xc = np.array([control.xc(i) for i in range(6)])
+    # control_yc = np.array([control.yc(i) for i in range(6)])
+    # experiment_xc = np.array([experiment.xc(i) for i in range(6)])
+    # experiment_yc = np.array([experiment.yc(i) for i in range(6)])
+    # [draw_minor_grid_boxes(ax, control.xe(i), control.ye(i), color='blue') for i in range(6)]
+    # draw_minor_grid_boxes(ax, experiment.xe(5), experiment.ye(5), linewidth=1)
+    #
+    # plt.scatter(control_xc[co1], control_yc[co1], color='red', s=50)
+    # plt.scatter(experiment_xc[co2], experiment_yc[co2], color='pink', s=50)
+    #
+    # print(len(co2[0]), np.count_nonzero(co2[0]==5))
+    # plt.show()
 
