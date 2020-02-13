@@ -54,7 +54,7 @@ class CSDataBase:
 class CubeSphere(CSDataBase):
     def __init__(self, cs):
         _, self._csgrid_list = make_grid_CS(cs)
-        self._make_rings()
+        #self._make_rings()
 
 
 class StretchedGrid(CSDataBase):
@@ -64,7 +64,7 @@ class StretchedGrid(CSDataBase):
         self.sf = sf
         self.target_lat = target_lat
         self.target_lon = target_lon
-        self._make_rings()
+        #self._make_rings()
 
 
 if __name__ == '__main__':
