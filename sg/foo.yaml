@@ -1,0 +1,84 @@
+
+## Define the control data source
+control-dataset: &control_dataset
+  path: "/extra-space/sgv-scatter/GCHP.C90.SpeciesConc.20160716_1200z.nc4"
+  grid:
+    type: "cubed-sphere"
+    cs: 90
+
+## Define the experiment data source
+s48-dataset: &s48_dataset
+  path: "/extra-space/sgv-scatter/GCHP.S48.SpeciesConc.20160716_1200z.nc4"
+  grid:
+    type: "stretched-grid"
+    cs: 48
+    sf: 2.015625
+    target_lat: 33.5
+    target_lon: 275.5
+
+
+## Define the experiment data source
+s12-dataset: &s12_dataset
+  path: "/extra-space/sgv-scatter/GCHP.S12.SpeciesConc.20160716_1200z.nc4"
+  grid:
+    type: "stretched-grid"
+    cs: 12
+    sf: 8.0625
+    target_lat: 33.7
+    target_lon: 275.5
+
+## Common arguments to colocated_scatter_plot()
+colocated_scatter: &colocated_scatter
+  x_dataset: *control_dataset
+  y_dataset: *s12_dataset
+  level: 0
+  distance_tolerance: 50.0e+3
+  intersect_tolerance: 0.3
+  scale: 1.0e+9
+  units: "ppb"
+
+r2_vs_sf_line_plot: &r2_vs_sf_line_plot_conf
+    cs_dataset: *control_dataset
+    sg_datasets:
+      - *s48_dataset
+      - *s12_dataset
+    level: 0
+    distance_tolerance: 50.0e+3
+    intersect_tolerance: 0.3
+    scale: 1.0e+9
+    units: "ppb"
+
+
+## List of plots to generate
+plots:
+#  - var: "SpeciesConc_O3"
+#    type: "colocated-scatter-plot"
+#    what: *colocated_scatter
+#  - var: "SpeciesConc_CO"
+#    type: "colocated-scatter-plot"
+#    what: *colocated_scatter
+#  - var: "SpeciesConc_NO"
+#    type: "colocated-scatter-plot"
+#    what: *colocated_scatter
+#  - var: "SpeciesConc_NO2"
+#    type: "colocated-scatter-plot"
+#    what: *colocated_scatter
+  - var: "SpeciesConc_O3"
+    type: "r2_vs_sf_line_plot"
+    what: *r2_vs_sf_line_plot_conf
+  - var: "SpeciesConc_CO"
+    type: "r2_vs_sf_line_plot"
+    what: *r2_vs_sf_line_plot_conf
+  - var: "SpeciesConc_NO"
+    type: "r2_vs_sf_line_plot"
+    what: *r2_vs_sf_line_plot_conf
+  - var: "SpeciesConc_NO2"
+    type: "r2_vs_sf_line_plot"
+    what: *r2_vs_sf_line_plot_conf
+
+## Set output specifications
+output:
+  type: 'pdf'
+  path: 'foo.pdf'
+
+
