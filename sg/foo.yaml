@@ -6,7 +6,22 @@ control-dataset: &control_dataset
     type: "cubed-sphere"
     cs: 90
 
-## Define the experiment data source
+control-dataset2: &control_dataset2
+  path: "/extra-space/sgv-scatter/GCHP.C90-my.SpeciesConc.20160716_1200z.nc4"
+  grid:
+    type: "cubed-sphere"
+    cs: 90
+
+## Define the experiment data sources
+s60-dataset: &s60_dataset
+  path: "/extra-space/sgv-scatter/GCHP.S60.SpeciesConc.20160716_1200z.nc4"
+  grid:
+    type: "stretched-grid"
+    cs: 60
+    sf: 1.6125
+    target_lat: 33.6
+    target_lon: 275.4
+
 s48-dataset: &s48_dataset
   path: "/extra-space/sgv-scatter/GCHP.S48.SpeciesConc.20160716_1200z.nc4"
   grid:
@@ -16,8 +31,15 @@ s48-dataset: &s48_dataset
     target_lat: 33.5
     target_lon: 275.5
 
+s24-dataset: &s24_dataset
+  path: "/extra-space/sgv-scatter/GCHP.S24.SpeciesConc.20160716_1200z.nc4"
+  grid:
+    type: "stretched-grid"
+    cs: 24
+    sf: 4.3125
+    target_lat: 33.2
+    target_lon: 275.4
 
-## Define the experiment data source
 s12-dataset: &s12_dataset
   path: "/extra-space/sgv-scatter/GCHP.S12.SpeciesConc.20160716_1200z.nc4"
   grid:
@@ -29,31 +51,51 @@ s12-dataset: &s12_dataset
 
 ## Common arguments to colocated_scatter_plot()
 colocated_scatter: &colocated_scatter
-  x_dataset: *control_dataset
-  y_dataset: *s12_dataset
-  level: 0
-  distance_tolerance: 50.0e+3
-  intersect_tolerance: 0.3
+  x_dataset: *control_dataset2
+  y_dataset: *s48_dataset
+  level: 22
+  distance_tolerance: 60.0e+3
+  intersect_tolerance: 0.4
   scale: 1.0e+9
   units: "ppb"
+  outlier_threshold: 0.1
 
 r2_vs_sf_line_plot: &r2_vs_sf_line_plot_conf
-    cs_dataset: *control_dataset
+    cs_dataset: *control_dataset2
     sg_datasets:
+      - *s60_dataset
       - *s48_dataset
+      - *s24_dataset
       - *s12_dataset
-    level: 0
-    distance_tolerance: 50.0e+3
-    intersect_tolerance: 0.3
+    level: 22
+    distance_tolerance: 60.0e+3
+    intersect_tolerance: 0.4
     scale: 1.0e+9
     units: "ppb"
 
 
+side_by_side_pcolormesh_conf: &side_by_side_pcolormesh_conf
+  dataset1: *control_dataset2
+  dataset2: *s48_dataset
+  level: 22
+  scale: 1.0e+9
+#  pcolormesh_kwargs:
+#    vmax: 80
+#  map_conf:
+#    extent: [-95, -75, 27, 39]
+  target_face_extent: True
+  units: "ppb"
+  distance_tolerance: 60.0e+3
+  intersect_tolerance: 0.4
+  outlier_threshold: 0.1
+
+
+
 ## List of plots to generate
 plots:
-#  - var: "SpeciesConc_O3"
-#    type: "colocated-scatter-plot"
-#    what: *colocated_scatter
+  - var: "SpeciesConc_O3"
+    type: "colocated-scatter-plot"
+    what: *colocated_scatter
 #  - var: "SpeciesConc_CO"
 #    type: "colocated-scatter-plot"
 #    what: *colocated_scatter
@@ -63,22 +105,52 @@ plots:
 #  - var: "SpeciesConc_NO2"
 #    type: "colocated-scatter-plot"
 #    what: *colocated_scatter
+#  - var: "SpeciesConc_O3"
+#    type: "r2_vs_sf_line_plot"
+#    what: *r2_vs_sf_line_plot_conf
+#  - var: "SpeciesConc_CO"
+#    type: "r2_vs_sf_line_plot"
+#    what: *r2_vs_sf_line_plot_conf
+#  - var: "SpeciesConc_OH"
+#    type: "r2_vs_sf_line_plot"
+#    what: *r2_vs_sf_line_plot_conf
+#  - var: "SpeciesConc_NO"
+#    type: "r2_vs_sf_line_plot"
+#    what: *r2_vs_sf_line_plot_conf
+#  - var: "SpeciesConc_NO2"
+#    type: "r2_vs_sf_line_plot"
+#    what: *r2_vs_sf_line_plot_conf
   - var: "SpeciesConc_O3"
-    type: "r2_vs_sf_line_plot"
-    what: *r2_vs_sf_line_plot_conf
+    type: "side_by_side_pcolormesh"
+    what: *side_by_side_pcolormesh_conf
   - var: "SpeciesConc_CO"
-    type: "r2_vs_sf_line_plot"
-    what: *r2_vs_sf_line_plot_conf
+    type: "colocated-scatter-plot"
+    what: *colocated_scatter
+  - var: "SpeciesConc_CO"
+    type: "side_by_side_pcolormesh"
+    what: *side_by_side_pcolormesh_conf
+  - var: "SpeciesConc_OH"
+    type: "colocated-scatter-plot"
+    what: *colocated_scatter
+  - var: "SpeciesConc_OH"
+    type: "side_by_side_pcolormesh"
+    what: *side_by_side_pcolormesh_conf
   - var: "SpeciesConc_NO"
-    type: "r2_vs_sf_line_plot"
-    what: *r2_vs_sf_line_plot_conf
+    type: "colocated-scatter-plot"
+    what: *colocated_scatter
+  - var: "SpeciesConc_NO"
+    type: "side_by_side_pcolormesh"
+    what: *side_by_side_pcolormesh_conf
   - var: "SpeciesConc_NO2"
-    type: "r2_vs_sf_line_plot"
-    what: *r2_vs_sf_line_plot_conf
+    type: "colocated-scatter-plot"
+    what: *colocated_scatter
+  - var: "SpeciesConc_NO2"
+    type: "side_by_side_pcolormesh"
+    what: *side_by_side_pcolormesh_conf
 
 ## Set output specifications
 output:
   type: 'pdf'
-  path: 'foo.pdf'
+  path: 'C48-why-60km-0_4.pdf'
 
 
