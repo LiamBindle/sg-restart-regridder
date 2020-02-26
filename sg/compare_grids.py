@@ -83,6 +83,8 @@ def colocated_centers(xc1, yc1, xc2, yc2, dist_tol_abs):
     co2 = tuple([idx_list for idx_list in np.moveaxis(np.array(co2), 0, -1)])
     return co1, co2
 
+import shapely.errors
+
 def comparable_gridboxes(control_grid, exp_grid, dist_tol_abs, area_tol_rel=None, intersect_tol_rel=None, target_lat=None, target_lon=None, inside=None):
     # Get center coordinates
     control_xc = np.array([control_grid.xc(i) for i in range(6)])
@@ -129,7 +131,17 @@ def comparable_gridboxes(control_grid, exp_grid, dist_tol_abs, area_tol_rel=None
     if area_tol_rel is not None:
         similar_areas = np.abs(co2_box_areas - co1_box_areas) / co1_box_areas < area_tol_rel
     elif intersect_tol_rel is not None:
-        intersections =np.array([b1.intersection(b2).area if b1.is_valid and b2.is_valid else 0 for b1, b2 in zip(co1_boxes, co2_boxes)])
+        intersections = []
+        for b1, b2 in zip(co1_boxes, co2_boxes):
+            try:
+                if b1.is_valid and b2.is_valid:
+                    intersect_area = b1.intersection(b2).area
+                else:
+                    intersect_area = 0
+            except shapely.errors.ShapelyError:
+                intersect_area = 0
+            intersections.append(intersect_area)
+        intersections = np.array(intersections)
         co1_similar = np.abs(intersections - co1_box_areas) / co1_box_areas < intersect_tol_rel
         co2_similar = np.abs(intersections - co2_box_areas) / co2_box_areas < intersect_tol_rel
         similar_areas = co1_similar & co2_similar
