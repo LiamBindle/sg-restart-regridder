@@ -194,7 +194,7 @@ if __name__=='__main__':
     import scipy.optimize
 
     # Global settings
-    cs_res = 360
+    cs_res = 180
     sf_res = int(sys.argv[1])
     max_aspect_ratio = 1.3      # center box area / edge box area
     ll_pm = (360/(cs_res*4))/4  # lat-lon plus/minus around initial guess, half the representative grid-box width
@@ -242,7 +242,7 @@ if __name__=='__main__':
             intersect_tol_rel=intersect_tol
         ),
         ranges=[lat_range, lon_range],
-        Ns=7,
+        Ns=11,
         finish=None
     )
     
