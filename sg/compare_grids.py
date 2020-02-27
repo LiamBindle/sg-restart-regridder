@@ -195,7 +195,7 @@ if __name__=='__main__':
 
     # Global settings
     cs_res = 360
-    sf_res = int(sys.argv[1])
+    sf = float(sys.argv[1])
     max_aspect_ratio = 1.3      # center box area / edge box area
     ll_pm = (360/(cs_res*4))/4  # lat-lon plus/minus around initial guess, half the representative grid-box width
     dist_tol = 50e3
@@ -205,24 +205,27 @@ if __name__=='__main__':
     target_lat = float(sys.argv[2])
     target_lon = float(sys.argv[3])
 
-    print(f'optimizing: sf={sf_res}, tlat={target_lat}, tlon={target_lon}')
+    print(f'optimizing: sf={sf}, tlat={target_lat}, tlon={target_lon}')
     
     # Optimize the stretch factor for matching box areas
     dist_tol_abs=2*dist_tol         # moderate distance tolerance
     intersect_tol=intersect_tol     # small area tolerance
-    sf_range=(cs_res/sf_res, cs_res/sf_res*max_aspect_ratio)
-    sf_opt = scipy.optimize.brute(
-        lambda sf: minimize_objective(
+
+    center = cs_res/sf
+    sg_res_range = np.arange(int(center/sf**0.5 + 0.5)//2*2, int(center*sf**0.5 + 0.51)//2*2, step=2, dtype=int)
+
+    sg_res_opt = scipy.optimize.brute(
+        lambda sg_res: minimize_objective(
             sf=sf,
             target_lat=target_lat,
             target_lon=target_lon,
             cs_res=cs_res,
-            sf_res=sf_res,
+            sf_res=int(sg_res),
             dist_tol_abs=dist_tol_abs,
             intersect_tol_rel=intersect_tol
         ),
-        [sf_range],
-        Ns=21,
+        [(sg_res_range[0], sg_res_range[-2])],
+        Ns=len(sg_res_range),
         finish=None
     )
     
@@ -235,9 +238,9 @@ if __name__=='__main__':
         lambda x: minimize_objective(
             target_lat=x[0],
             target_lon=x[1],
-            sf=sf_opt,
+            sf=sf,
             cs_res=cs_res,
-            sf_res=sf_res,
+            sf_res=int(sg_res_opt),
             dist_tol_abs=dist_tol_abs,
             intersect_tol_rel=intersect_tol
         ),
@@ -246,7 +249,7 @@ if __name__=='__main__':
         finish=None
     )
     
-    print(f'sf={sf_opt}, lat={lat_opt}, lon={lon_opt}')
+    print(f'sf={sf}, sg_res={sg_res_opt}, lat={lat_opt}, lon={lon_opt}')
 
 
     # sf=1.075
