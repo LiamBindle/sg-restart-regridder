@@ -214,21 +214,11 @@ if __name__=='__main__':
     center = cs_res/sf
     sg_res_range = np.arange(int(center/sf**0.5 + 0.5)//2*2, int(center*sf**0.5 + 0.51)//2*2, step=2, dtype=int)
 
-    sg_res_opt = scipy.optimize.brute(
-        lambda sg_res: minimize_objective(
-            sf=sf,
-            target_lat=target_lat,
-            target_lon=target_lon,
-            cs_res=cs_res,
-            sf_res=int(sg_res),
-            dist_tol_abs=dist_tol_abs,
-            intersect_tol_rel=intersect_tol
-        ),
-        [(sg_res_range[0], sg_res_range[-2])],
-        Ns=len(sg_res_range),
-        finish=None
-    )
-    
+    count = np.zeros_like(sg_res_range)
+    for i, sg_res in enumerate(sg_res_range):
+        count[i] = minimize_objective(sf, target_lat, target_lon, cs_res, sg_res, dist_tol_abs=dist_tol_abs, intersect_tol_rel=intersect_tol)
+    sg_res_opt = sg_res_range[np.argmin(count)]
+
     # Optimize the position factor
     dist_tol_abs=dist_tol           # smaller distance tolerance
     intersect_tol=intersect_tol     # small intersect tolerance
