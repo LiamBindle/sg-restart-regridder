@@ -51,6 +51,10 @@ def dimensionality_reduction_factory(type, **kwargs):
         rv = sg.compare_grids.comparable_gridboxes(**kwargs)
         dim_red_cache[arg_hash] = rv
         return rv
+    elif type == 'coarse-colocated-grid-boxes':
+        rv = sg.compare_grids.many_comparable_gridboxes(**kwargs)
+        dim_red_cache[arg_hash] = rv
+        return rv
 
 
 def format_axes_correlation_plot(ax: plt.Axes):
@@ -179,6 +183,84 @@ def plot_pcolomesh(ax, xx, yy, data, **kwargs):
     data_pm = np.ma.masked_where(pm, data)
     return ax.pcolormesh(xx, yy, data_pm, transform=ccrs.PlateCarree(), **kwargs)
 
+
+def coarse_control_scatter(ax, var: str, x_dataset: dict, y_dataset: dict, **kwargs):
+    kwargs = kwargs.copy()
+    kwargs.setdefault('scale', 1)
+    kwargs.setdefault('units', "1")
+    kwargs.setdefault('xlabel', f"Reference, [{kwargs['units']}]")
+    kwargs.setdefault('ylabel', f"Experiment, [{kwargs['units']}]")
+    kwargs.setdefault('level', 0)
+
+    # Get indexes
+    x_grid = grid_factory(**x_dataset['grid'])
+    y_grid = grid_factory(**y_dataset['grid'])
+    x_indexes, y_indexes, weights = dimensionality_reduction_factory(
+        'coarse-colocated-grid-boxes',
+        control_grid=x_grid,
+        exp_grid=y_grid,
+    )
+
+    # Get variables
+    vertical_reduction = lambda x: x.squeeze().isel(lev=kwargs['level']).transpose('nf', 'Ydim', 'Xdim')
+    x_dataset_resolved = dataset_factory(**x_dataset)[var].pipe(vertical_reduction).values
+    x = np.array([
+        x_dataset_resolved[x_idx] for x_idx in x_indexes
+    ])
+
+
+    y_dataset_resolved = dataset_factory(**y_dataset)[var].pipe(vertical_reduction).isel(nf=5).values
+    y = np.array(
+        [np.dot(w, y_dataset_resolved[y_idx]) for w, y_idx in zip(weights, y_indexes)]
+    )
+
+    variance = np.array([np.average((y_dataset_resolved[y_idx] - ymean) ** 2, weights=w) for y_idx, ymean, w in zip(y_indexes, y, weights)])
+
+    # Look for outliers
+    if 'outlier_threshold' in kwargs:
+        outlier_threshold = kwargs['outlier_threshold']
+        rel_diff = np.abs(y - x) / x
+        outliers = np.where(rel_diff >= outlier_threshold)
+        good_points = np.where(rel_diff < outlier_threshold)
+
+        elinewidth=0.8
+
+        ax.errorbar(
+            x[good_points] * kwargs['scale'],
+            y[good_points] * kwargs['scale'],
+            yerr=np.sqrt(variance)[good_points]*kwargs['scale'],
+            fmt='.', elinewidth=elinewidth,
+            ecolor='#1F77B450'
+        )
+        ax.errorbar(x[outliers] * kwargs['scale'], y[outliers] * kwargs['scale'],
+                    yerr=np.sqrt(variance)[outliers] * kwargs['scale'], color='red', fmt='.', elinewidth=elinewidth)
+        # ax.scatter(x[good_points] * kwargs['scale'], y[good_points] * kwargs['scale'])
+        # ax.scatter(x[outliers] * kwargs['scale'], y[outliers] * kwargs['scale'], color='red')
+    else:
+        # Plot
+        ax.scatter(x * kwargs['scale'], y * kwargs['scale'])
+
+    # Format axes
+    format_axes_correlation_plot(ax)
+    ax.set_title(var)
+    ax.set_xlabel(kwargs['xlabel'])
+    ax.set_ylabel(kwargs['ylabel'])
+
+    lim_pad = 0.95
+    xmin = np.min([*x, *y]) * kwargs['scale'] * lim_pad
+    xmax = np.max([*x, *y]) * kwargs['scale'] / lim_pad
+    ax.set_xlim(xmin, xmax)
+    ax.set_ylim(xmin, xmax)
+
+    # Compute metrics
+    r2 = sklearn.metrics.r2_score(y_true=x, y_pred=y)
+    rmse = np.sqrt(sklearn.metrics.mean_squared_error(y_true=x, y_pred=y))
+    mae = sklearn.metrics.mean_absolute_error(y_true=x, y_pred=y)
+    ax.text(
+        0.1, 0.8,
+        f'$\\mathrm{{R}}^2$={r2:5.3f}\nRMSE={rmse * kwargs["scale"]:5.1f}\nMAE={mae * kwargs["scale"]:5.1f}',
+        transform=ax.transAxes
+    )
 
 
 def map_axes_formatter_1(ax, **kwargs):
@@ -394,6 +476,8 @@ if __name__ == '__main__':
             r2_vs_sf_line_plot(fig, var=plot_conf['var'], **plot_conf['what'])
         elif plot_conf['type'] == 'side_by_side_pcolormesh':
             pcolormesh_comparison(var=plot_conf['var'], **plot_conf['what'])
+        elif plot_conf['type'] == 'coarse-colocated-scatter-plot':
+            coarse_control_scatter(plt.gca(), var=plot_conf['var'], **plot_conf['what'])
 
         # Handle output
         if input.get('output', {}).get('type', None) == 'pdf':

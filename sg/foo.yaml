@@ -12,6 +12,13 @@ control-dataset2: &control_dataset2
     type: "cubed-sphere"
     cs: 90
 
+c48-control: &c48_control
+  path: "/extra-space/sgv-scatter/GCHP.C48.SpeciesConc.20160716_1200z.nc4"
+  grid:
+    type: "cubed-sphere"
+    cs: 48
+
+
 ## Define the experiment data sources
 s60-dataset: &s60_dataset
   path: "/extra-space/sgv-scatter/GCHP.S60.SpeciesConc.20160716_1200z.nc4"
@@ -52,10 +59,18 @@ s12-dataset: &s12_dataset
 ## Common arguments to colocated_scatter_plot()
 colocated_scatter: &colocated_scatter
   x_dataset: *control_dataset2
-  y_dataset: *s48_dataset
-  level: 22
+  y_dataset: *s12_dataset
+  level: 12
   distance_tolerance: 60.0e+3
   intersect_tolerance: 0.4
+  scale: 1.0e+9
+  units: "ppb"
+  outlier_threshold: 0.1
+
+coarse_colocated_scatter: &coarse_colocated_scatter
+  x_dataset: *c48_control
+  y_dataset: *s12_dataset
+  level: 12
   scale: 1.0e+9
   units: "ppb"
   outlier_threshold: 0.1
@@ -93,9 +108,9 @@ side_by_side_pcolormesh_conf: &side_by_side_pcolormesh_conf
 
 ## List of plots to generate
 plots:
-  - var: "SpeciesConc_O3"
-    type: "colocated-scatter-plot"
-    what: *colocated_scatter
+#  - var: "SpeciesConc_O3"
+#    type: "colocated-scatter-plot"
+#    what: *colocated_scatter
 #  - var: "SpeciesConc_CO"
 #    type: "colocated-scatter-plot"
 #    what: *colocated_scatter
@@ -120,37 +135,43 @@ plots:
 #  - var: "SpeciesConc_NO2"
 #    type: "r2_vs_sf_line_plot"
 #    what: *r2_vs_sf_line_plot_conf
+#  - var: "SpeciesConc_O3"
+#    type: "side_by_side_pcolormesh"
+#    what: *side_by_side_pcolormesh_conf
+#  - var: "SpeciesConc_CO"
+#    type: "colocated-scatter-plot"
+#    what: *colocated_scatter
+#  - var: "SpeciesConc_CO"
+#    type: "side_by_side_pcolormesh"
+#    what: *side_by_side_pcolormesh_conf
+#  - var: "SpeciesConc_OH"
+#    type: "colocated-scatter-plot"
+#    what: *colocated_scatter
+#  - var: "SpeciesConc_OH"
+#    type: "side_by_side_pcolormesh"
+#    what: *side_by_side_pcolormesh_conf
+#  - var: "SpeciesConc_NO"
+#    type: "colocated-scatter-plot"
+#    what: *colocated_scatter
+#  - var: "SpeciesConc_NO"
+#    type: "side_by_side_pcolormesh"
+#    what: *side_by_side_pcolormesh_conf
+#  - var: "SpeciesConc_NO2"
+#    type: "colocated-scatter-plot"
+#    what: *colocated_scatter
+#  - var: "SpeciesConc_NO2"
+#    type: "side_by_side_pcolormesh"
+#    what: *side_by_side_pcolormesh_conf
   - var: "SpeciesConc_O3"
-    type: "side_by_side_pcolormesh"
-    what: *side_by_side_pcolormesh_conf
-  - var: "SpeciesConc_CO"
+    type: "coarse-colocated-scatter-plot"
+    what: *coarse_colocated_scatter
+  - var: "SpeciesConc_O3"
     type: "colocated-scatter-plot"
     what: *colocated_scatter
-  - var: "SpeciesConc_CO"
-    type: "side_by_side_pcolormesh"
-    what: *side_by_side_pcolormesh_conf
-  - var: "SpeciesConc_OH"
-    type: "colocated-scatter-plot"
-    what: *colocated_scatter
-  - var: "SpeciesConc_OH"
-    type: "side_by_side_pcolormesh"
-    what: *side_by_side_pcolormesh_conf
-  - var: "SpeciesConc_NO"
-    type: "colocated-scatter-plot"
-    what: *colocated_scatter
-  - var: "SpeciesConc_NO"
-    type: "side_by_side_pcolormesh"
-    what: *side_by_side_pcolormesh_conf
-  - var: "SpeciesConc_NO2"
-    type: "colocated-scatter-plot"
-    what: *colocated_scatter
-  - var: "SpeciesConc_NO2"
-    type: "side_by_side_pcolormesh"
-    what: *side_by_side_pcolormesh_conf
 
 ## Set output specifications
 output:
   type: 'pdf'
-  path: 'C48-why-60km-0_4.pdf'
+  path: 'both_compares.pdf'
 
 

@@ -5,6 +5,8 @@ import cartopy.crs as ccrs
 import scipy.spatial
 import pyproj
 
+import sg.grids
+
 
 def draw_minor_grid_boxes(ax, xx, yy, **kwargs):
     kwargs.setdefault('linewidth', 0.5)
@@ -161,6 +163,86 @@ def comparable_gridboxes(control_grid, exp_grid, dist_tol_abs, area_tol_rel=None
 
     return co1_final, co2_final
 
+def many_comparable_gridboxes(control_grid, exp_grid: sg.grids.StretchedGrid):
+    # Get center coordinates
+    control_xc = np.array([control_grid.xc(i) for i in range(6)])
+    control_yc = np.array([control_grid.yc(i) for i in range(6)])
+    experiment_xc = exp_grid.xc(5)
+    experiment_yc = exp_grid.yc(5)
+
+    control_xc[control_xc < 0] += 360
+    experiment_xc[experiment_xc < 0] += 360
+
+    res = control_xc[0].shape[0]
+    co1, co2 = colocated_centers(control_xc, control_yc, experiment_xc, experiment_yc,
+                                 dist_tol_abs=360/(4*res)/2*np.sqrt(2.3)*2
+                                 )
+
+    # Get polygons
+    control_boxes_xy = np.ndarray((6, *control_xc.shape[1:], 4, 2))  # [face, i, i, pts, xy]
+    for i in range(6):
+        xx = control_grid.xe(i)
+        xx[xx > 180] -= 360
+        _, _, control_boxes_xy[i, ...] = get_am_and_pm_masks_and_polygons_outline(xx, control_grid.ye(i))
+    xx = exp_grid.xe(5)
+    xx[xx > 180] -= 360
+    _, _, experiment_boxes_xy = get_am_and_pm_masks_and_polygons_outline(xx, exp_grid.ye(5))
+
+    # Colocated boxes
+    co1_boxes_xy = control_boxes_xy[co1]
+    co2_boxes_xy = experiment_boxes_xy[co2]
+
+
+    # Get weighting (intersection)
+
+    # Project to equal area coordinate system with units of meters
+    equal_area_meters = pyproj.Proj(f'+proj=laea +lon_0={exp_grid.target_lon} +lat_0={exp_grid.target_lat} +units=m')
+    co1_boxes_xy_m = np.moveaxis(equal_area_meters(co1_boxes_xy[..., 0], co1_boxes_xy[..., 1]), 0, -1)
+    co2_boxes_xy_m = np.moveaxis(equal_area_meters(co2_boxes_xy[..., 0], co2_boxes_xy[..., 1]), 0, -1)
+
+    co1_boxes = np.array([shapely.geometry.Polygon(outline) for outline in co1_boxes_xy_m])
+    co2_boxes = np.array([shapely.geometry.Polygon(outline) for outline in co2_boxes_xy_m])
+    intersect_rel = []
+    for b1, b2 in zip(co1_boxes, co2_boxes):
+        try:
+            if b1.is_valid and b2.is_valid:
+                intersect = b1.intersection(b2).area / b1.area
+            else:
+                intersect = 0
+        except shapely.errors.ShapelyError:
+            intersect = 0
+        intersect_rel.append(intersect)
+
+    keep = np.array(intersect_rel) > 0
+
+    # Find boxes with similar areas
+    co1 = tuple([indexes[keep] for indexes in co1])
+    co2 = tuple([indexes[keep] for indexes in co2])
+    intersect = np.array(intersect_rel)[keep]
+
+    prev = None
+    co1_unique = []
+    co2_match = []
+    weight = []
+    for idx1, idx2, overlap in zip(zip(*co1), zip(*co2), intersect):
+        if idx1 != prev:
+            co1_unique.append(idx1)
+            co2_match.append([])
+            weight.append([])
+        weight[-1].append(overlap)
+        co2_match[-1].append(idx2)
+        prev = idx1
+
+    # only keep boxes with total weight equal to approximately 1
+    total_weight = np.array([np.sum(weights) for weights in weight])
+
+    keep = total_weight > 0.95
+    co1 = [c for c, k in zip(co1_unique, keep) if k]
+    co2 = [tuple(np.array(c).transpose()) for c, k in zip(co2_match, keep) if k]
+    weights = [np.array(w) for w, k in zip(weight, keep) if k]
+
+    return co1, co2, weights
+
 
 cs_bank = {}
 
@@ -186,86 +268,89 @@ def minimize_objective(sf, target_lat, target_lon, cs_res=48, sf_res=24, dist_to
 
 
 if __name__=='__main__':
-    import sg.grids
     import matplotlib.pyplot as plt
     import sys
 
 
     import scipy.optimize
 
-    # Global settings
-    cs_res = 360
-    sf = float(sys.argv[1])
-    max_aspect_ratio = 1.3      # center box area / edge box area
-    ll_pm = (360/(cs_res*4))/2  # lat-lon plus/minus around initial guess, half the representative grid-box width
-    dist_tol = 50e3
-    intersect_tol = 0.4
-    
-    # Initial guesses
-    target_lat = float(sys.argv[2])
-    target_lon = float(sys.argv[3])
-
-    print(f'optimizing: sf={sf}, tlat={target_lat}, tlon={target_lon}')
-    
-    # Optimize the stretch factor for matching box areas
-    dist_tol_abs=2*dist_tol         # moderate distance tolerance
-    intersect_tol=intersect_tol     # small area tolerance
-
-    center = cs_res/sf
-    sg_res_range = np.arange(int(center/sf**0.5 + 0.5)//2*2, int(center*sf**0.5 + 0.51)//2*2, step=2, dtype=int)
-
-    count = np.zeros_like(sg_res_range)
-    for i, sg_res in enumerate(sg_res_range):
-        count[i] = minimize_objective(sf, target_lat, target_lon, cs_res, sg_res, dist_tol_abs=dist_tol_abs, intersect_tol_rel=intersect_tol)
-    sg_res_opt = sg_res_range[np.argmin(count)]
-
-    # Optimize the position factor
-    dist_tol_abs=dist_tol           # smaller distance tolerance
-    intersect_tol=intersect_tol     # small intersect tolerance
-    lat_range=(target_lat-ll_pm, target_lat+ll_pm)
-    lon_range=(target_lon-ll_pm, target_lon+ll_pm)
-    lat_opt, lon_opt = scipy.optimize.brute(
-        lambda x: minimize_objective(
-            target_lat=x[0],
-            target_lon=x[1],
-            sf=sf,
-            cs_res=cs_res,
-            sf_res=int(sg_res_opt),
-            dist_tol_abs=dist_tol_abs,
-            intersect_tol_rel=intersect_tol
-        ),
-        ranges=[lat_range, lon_range],
-        Ns=11,
-        finish=None
-    )
-    
-    print(f'sf={sf}, sg_res={sg_res_opt}, lat={lat_opt}, lon={lon_opt}')
-
-
-    # sf=1.075
-    # target_lat=33.7
-    # target_lon=275.5
-    # dist_tol_abs=20e3
-    # area_tol_rel=0.4
-
-    # control = sg.grids.CubeSphere(90)
-    # experiment = sg.grids.StretchedGrid(90, sf, target_lat, target_lon)
-    # co1, co2 = comparable_gridboxes(control, experiment, dist_tol_abs, area_tol_rel=0.3, target_lat=target_lat, target_lon=target_lon)
+    # # Global settings
+    # cs_res = 360
+    # sf = float(sys.argv[1])
+    # max_aspect_ratio = 1.3      # center box area / edge box area
+    # ll_pm = (360/(cs_res*4))/2  # lat-lon plus/minus around initial guess, half the representative grid-box width
+    # dist_tol = 50e3
+    # intersect_tol = 0.4
+    #
+    # # Initial guesses
+    # target_lat = float(sys.argv[2])
+    # target_lon = float(sys.argv[3])
+    #
+    # print(f'optimizing: sf={sf}, tlat={target_lat}, tlon={target_lon}')
+    #
+    # # Optimize the stretch factor for matching box areas
+    # dist_tol_abs=2*dist_tol         # moderate distance tolerance
+    # intersect_tol=intersect_tol     # small area tolerance
+    #
+    # center = cs_res/sf
+    # sg_res_range = np.arange(int(center/sf**0.5 + 0.5)//2*2, int(center*sf**0.5 + 0.51)//2*2, step=2, dtype=int)
+    #
+    # count = np.zeros_like(sg_res_range)
+    # for i, sg_res in enumerate(sg_res_range):
+    #     count[i] = minimize_objective(sf, target_lat, target_lon, cs_res, sg_res, dist_tol_abs=dist_tol_abs, intersect_tol_rel=intersect_tol)
+    # sg_res_opt = sg_res_range[np.argmin(count)]
+    #
+    # # Optimize the position factor
+    # dist_tol_abs=dist_tol           # smaller distance tolerance
+    # intersect_tol=intersect_tol     # small intersect tolerance
+    # lat_range=(target_lat-ll_pm, target_lat+ll_pm)
+    # lon_range=(target_lon-ll_pm, target_lon+ll_pm)
+    # lat_opt, lon_opt = scipy.optimize.brute(
+    #     lambda x: minimize_objective(
+    #         target_lat=x[0],
+    #         target_lon=x[1],
+    #         sf=sf,
+    #         cs_res=cs_res,
+    #         sf_res=int(sg_res_opt),
+    #         dist_tol_abs=dist_tol_abs,
+    #         intersect_tol_rel=intersect_tol
+    #     ),
+    #     ranges=[lat_range, lon_range],
+    #     Ns=11,
+    #     finish=None
+    # )
+    #
+    # print(f'sf={sf}, sg_res={sg_res_opt}, lat={lat_opt}, lon={lon_opt}')
 
 
-    # ax = plt.axes(projection=ccrs.PlateCarree())
-    # ax.set_global()
-    # ax.coastlines(linewidth=0.8)
-    # control_xc = np.array([control.xc(i) for i in range(6)])
-    # control_yc = np.array([control.yc(i) for i in range(6)])
+    sf=8
+    target_lat=33.7
+    target_lon=275.5
+    dist_tol_abs=20e3
+    area_tol_rel=0.4
+
+    control = sg.grids.CubeSphere(24)
+    experiment = sg.grids.StretchedGrid(12, sf, target_lat, target_lon)
+    co1, co2, intersect = many_comparable_gridboxes(control, experiment)
+
+
+    ax = plt.axes(projection=ccrs.PlateCarree())
+    ax.set_global()
+    ax.coastlines(linewidth=0.8)
+    control_xc = np.array([control.xc(i) for i in range(6)])
+    control_yc = np.array([control.yc(i) for i in range(6)])
+    experiment_xc = experiment.xc(5)
+    experiment_yc = experiment.yc(5)
     # experiment_xc = np.array([experiment.xc(i) for i in range(6)])
     # experiment_yc = np.array([experiment.yc(i) for i in range(6)])
-    # [draw_minor_grid_boxes(ax, control.xe(i), control.ye(i), color='blue') for i in range(6)]
-    # draw_minor_grid_boxes(ax, experiment.xe(5), experiment.ye(5), linewidth=1)
+    [draw_minor_grid_boxes(ax, control.xe(i), control.ye(i), color='blue') for i in range(6)]
+    draw_minor_grid_boxes(ax, experiment.xe(5), experiment.ye(5), linewidth=1)
 
-    # plt.scatter(control_xc[co1], control_yc[co1], color='red', s=50)
-    # plt.scatter(experiment_xc[co2], experiment_yc[co2], color='pink', s=50)
+    for i in co1:
+        plt.scatter(control_xc[i], control_yc[i], color='red', s=50)
+    for i in co2:
+        plt.scatter(experiment_xc[i], experiment_yc[i], color='pink', s=50)
 
-    # print(len(co2[0]), np.count_nonzero(co2[0]==5))
-    # plt.show()
+    print(len(co2[0]), np.count_nonzero(co2[0]==5))
+    plt.show()
 
