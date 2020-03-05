@@ -134,57 +134,6 @@ if __name__ == '__main__':
         {'sf': 15, 'tlat': -7, 'tlon': 108, 'color': cmap(3)},
     ]
 
-    # plt.figure()
-    # ax = plt.axes(projection=ccrs.EqualEarth())
-    # ax.set_global()
-    #
-    # ax.add_feature(cfeature.OCEAN)
-    # ax.add_feature(cfeature.LAND, edgecolor='black', linewidth=0.2)
-    # ax.add_feature(cfeature.LAKES, edgecolor='black', linewidth=0.2)
-    # ax.add_feature(cfeature.STATES, edgecolor='black', linewidth=0.1)
-    # ax.add_feature(cfeature.BORDERS, edgecolor='black', linewidth=0.2)
-    #
-    # for g in tqdm.tqdm(grids):
-    #     draw_target_face_outline(ax, **g)
-    #
-    # plt.tight_layout()
-    # plt.show()
-
-    control_res = 720
-
-    # Estimate get res
-
-    # # 48 ~ 96 cores (3 nodes)
-    # sf = np.array([d['sf'] for d in grids])
-    # tlat = np.array([d['tlat'] for d in grids])
-    # tlon = np.array([d['tlon'] for d in grids])
-    #
-    # res = np.array([find_optimal_res(control_res, s, lat0, lon0) for s, lat0, lon0 in tqdm.tqdm(zip(sf, tlat, tlon))])
-    #
-    #
-    # res_factor = res / 48
-    # complexity = 2**(res_factor - 1)
-    #
-    # cores_per_node = 32
-    # nnodes = (3*complexity + 0.5).astype(int)
-    # ncores = cores_per_node*nnodes
-    #
-    # ncores = ncores.astype(int)
-    # nnodes = nnodes.astype(int)
-    # res = res.astype(int)
-    #
-    # grids2 = []
-    #
-    # print(f'{"Cores":>7},{"Nodes":>7},{"CPN":>7},{"SF":>7},{"RES":>7}{"TLAT":>7},{"TLON":>7}')
-    # for nc, nn, r, s, lat0, lon0 in zip(ncores, nnodes, res, sf, tlat, tlon):
-    #     gkw = {'sf': s, 'tlat': lat0, 'tlon': lon0}
-    #     if r < 24 or r > 120:
-    #         print(f'-- {nc:4d},{nn:7d},{32:7d},{s:7.2f},{r:7d}{lat0:7.2f},{lon0:7.2f}')
-    #         gkw['color'] = 'red'
-    #     else:
-    #         print(f'{nc:7d},{nn:7d},{32:7d},{s:7.2f},{r:7d}{lat0:7.2f},{lon0:7.2f}')
-    #         gkw['color'] = 'blue'
-    #     grids2.append(gkw)
 
     plt.figure()
     ax = plt.axes(projection=ccrs.EqualEarth())
