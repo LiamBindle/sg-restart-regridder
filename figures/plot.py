@@ -55,6 +55,9 @@ if __name__ == '__main__':
     cbar.ax.get_yaxis().labelpad = 15
     cbar.ax.set_yticklabels([f'{2**g}' if g>=0 else f'1/{2**-g}' for g in np.arange(-4, 5)])
 
+
+    # What's being plotted: relative change in grid-box-length divergence resulting from Schmidt transform
+
     plt.yscale('log')
     # plt.grid(
     #     True,

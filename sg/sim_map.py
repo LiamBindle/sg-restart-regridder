@@ -155,9 +155,9 @@ if __name__ == '__main__':
     # Estimate get res
 
     # # 48 ~ 96 cores (3 nodes)
-    # sf = np.array([d['sf'] for d in grids])
-    # tlat = np.array([d['tlat'] for d in grids])
-    # tlon = np.array([d['tlon'] for d in grids])
+    sf = np.array([d['sf'] for d in grids])
+    tlat = np.array([d['tlat'] for d in grids])
+    tlon = np.array([d['tlon'] for d in grids])
     #
     # res = np.array([find_optimal_res(control_res, s, lat0, lon0) for s, lat0, lon0 in tqdm.tqdm(zip(sf, tlat, tlon))])
     #
@@ -185,6 +185,9 @@ if __name__ == '__main__':
     #         print(f'{nc:7d},{nn:7d},{32:7d},{s:7.2f},{r:7d}{lat0:7.2f},{lon0:7.2f}')
     #         gkw['color'] = 'blue'
     #     grids2.append(gkw)
+
+    for s, lat0, lon0 in zip(sf, tlat, tlon):
+        print(f'{s:7.2f},{lat0:7.2f},{lon0:7.2f}')
 
     plt.figure()
     ax = plt.axes(projection=ccrs.EqualEarth())
