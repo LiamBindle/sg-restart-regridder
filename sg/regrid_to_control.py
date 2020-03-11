@@ -47,6 +47,8 @@ if __name__ == '__main__':
     warnings.simplefilter("ignore")
     logging.info('Opening input datasets...')
 
+    lineno = int(os.path.basename(os.path.dirname(args["exp_prefix"])))
+
     exp_res = len(xr.open_dataset(f'{args["exp_prefix"]}/{args["output_files"][0]}').Ydim)
     ctl_res = len(xr.open_dataset(f'{args["ctl_prefix"]}/{args["output_files"][0]}').Ydim)
     nlev = len(xr.open_dataset(f'{args["ctl_prefix"]}/{args["output_files"][0]}').lev)
@@ -68,7 +70,7 @@ if __name__ == '__main__':
     ctl_indexes = tuple(zip(*ctl_indexes))
 
     ds_out = xr.Dataset(
-        coords={'lev': range(nlev), 'face': range(6), 'Ydim': range(ctl_res), 'Xdim': range(ctl_res)}
+        coords={'lev': range(nlev), 'face': range(6), 'Ydim': range(ctl_res), 'Xdim': range(ctl_res), 'lineno': [lineno]}
     )
 
     logging.info('Slicing data...')
@@ -98,6 +100,6 @@ if __name__ == '__main__':
             ds_out[var + '_SUBGRID_VARIANCE'] = exp_on_ctl_var
 
     logging.info('Writing output files...')
-    fname = f'{args["output_prefix"]}/lineno-{os.path.basename(os.path.dirname(args["exp_prefix"]))}.nc'
+    fname = f'{args["output_prefix"]}/lineno-{lineno}.nc'
     ds_out.to_netcdf(fname)
-    logging.info('Done')
+    logging.info('Done') # REPLACE_EXP_OUTPUT_DIR REPLACE_CTL_OUTPUT_DIR REPLACE_RESULTS_DIR
