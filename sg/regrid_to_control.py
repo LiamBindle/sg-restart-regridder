@@ -31,6 +31,11 @@ if __name__ == '__main__':
                         type=str,
                         required=True,
                         help='path to the control\'s output directory')
+    parser.add_argument('-o', '--output-prefix',
+                        metavar='O',
+                        type=str,
+                        required=True,
+                        help='path to output prefix where the generate file will go')
     parser.add_argument('-v', '--vars',
                         metavar='C',
                         nargs='+',
@@ -93,6 +98,6 @@ if __name__ == '__main__':
             ds_out[var + '_SUBGRID_VARIANCE'] = exp_on_ctl_var
 
     logging.info('Writing output files...')
-    fname = f'{os.path.basename(os.path.dirname(args["exp_prefix"]))}.nc'
+    fname = f'{args["output_prefix"]}/lineno-{os.path.basename(os.path.dirname(args["exp_prefix"]))}.nc'
     ds_out.to_netcdf(fname)
     logging.info('Done')
