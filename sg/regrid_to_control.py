@@ -2,6 +2,8 @@ import argparse
 import logging
 import re
 import os
+import fcntl
+import pickle
 
 import warnings
 
@@ -35,7 +37,7 @@ if __name__ == '__main__':
                         metavar='O',
                         type=str,
                         required=True,
-                        help='path to output prefix where the generate file will go')
+                        help='path to output file')
     parser.add_argument('-v', '--vars',
                         metavar='C',
                         nargs='+',
@@ -73,6 +75,8 @@ if __name__ == '__main__':
         coords={'lev': range(nlev), 'face': range(6), 'Ydim': range(ctl_res), 'Xdim': range(ctl_res), 'lineno': [lineno]}
     )
 
+    data = {'ctl_indexes': ctl_indexes, 'ctl_dims': ['nf', 'Ydim', 'Xdim']}
+
     logging.info('Slicing data...')
     for output_file in args["output_files"]:
         ds_exp = xr.open_dataset(f'{args["exp_prefix"]}/{output_file}')
@@ -86,20 +90,21 @@ if __name__ == '__main__':
             exp_on_ctl = xr.DataArray(np.nan, coords=sub_coords, dims=sub_dims)
             exp_on_ctl_var = xr.DataArray(np.nan, coords=sub_coords, dims=sub_dims)
 
+            values = np.ones((nlev, len(exp_indexes))) * np.nan
+            variance = np.ones((nlev, len(exp_indexes))) * np.nan
+
             for lev in range(nlev):
                 da_exp = ds_exp[var].squeeze().isel(lev=lev, nf=5).transpose('Ydim', 'Xdim').values
-                regridded = [np.dot(w, da_exp[i]) for w, i in zip(weights, exp_indexes)]
-                exp_on_ctl.isel(lev=lev).values[ctl_indexes] = [np.dot(w, da_exp[i]) for w, i in zip(weights, exp_indexes)]
-                exp_on_ctl_var.isel(lev=lev).values[ctl_indexes] = [
-                    np.average((da_exp[y_idx] - ymean) ** 2, weights=w) for y_idx, ymean, w in zip(exp_indexes, regridded, weights)
+                values[lev, :] = [np.dot(w, da_exp[i]) for w, i in zip(weights, exp_indexes)]
+                variance[lev, :] = [
+                    np.average((da_exp[y_idx] - ymean) ** 2, weights=w) for y_idx, ymean, w in zip(exp_indexes, values[lev,:], weights)
                 ]
 
-            ds_out[var + '_SUBGRID_VARIANCE'] = xr.DataArray(np.nan, coords=sub_coords, dims=sub_dims)
-            ds_out[var] = xr.DataArray(np.nan, coords=sub_coords, dims=sub_dims)
-            ds_out[var] = exp_on_ctl
-            ds_out[var + '_SUBGRID_VARIANCE'] = exp_on_ctl_var
+            data[var] = values
+            data[var + '_SUBGRID_VARIANCE'] = variance
 
     logging.info('Writing output files...')
-    fname = f'{args["output_prefix"]}/lineno-{lineno}.nc'
-    ds_out.to_netcdf(fname)
+    fname = f'{args["output_prefix"]}/lineno-{lineno}.pkl'
+    with open(fname, 'wb') as f:
+        pickle.dump(data, f)
     logging.info('Done') # REPLACE_EXP_OUTPUT_DIR REPLACE_CTL_OUTPUT_DIR REPLACE_RESULTS_DIR
