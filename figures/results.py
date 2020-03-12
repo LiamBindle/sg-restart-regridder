@@ -40,9 +40,42 @@ def eval_metric(df: pd.DataFrame, callable_metric):
                     scores[new_cname].at[lineno] = callable_metric(y_true=data[x_cname], y_pred=data[y_cname])
     return scores
 
+def eval_stat(df: pd.DataFrame, who, callable_stat):
+    stat = df.copy()
+    del stat['fnames']
+    stat[who] = np.ones_like(df['fnames']) * np.nan
+    for lineno, fname in zip(df.index, df['fnames']):
+        if os.path.exists(fname):
+            data = pd.read_csv(fname)
+            stat[who].at[lineno] = callable_stat(data[who])
+    return stat
+
+def get_mean_subgrid_std(df: pd.DataFrame):
+    scores = df.copy()
+    del scores['fnames']
+    is_first = True
+    for lineno, fname in zip(df.index, df['fnames']):
+        if os.path.exists(fname):
+            data = pd.read_csv(fname)
+            species = list(set([cname.split(':')[0] for cname in data.columns]))
+            layers = list(set([int(cname.split(':')[2]) for cname in data.columns]))
+            species.sort()
+            layers.sort()
+
+            if is_first:
+                for s in species:
+                    for l in layers:
+                        scores[f'{s}:{l}:VAR'] = np.ones_like(df['fnames']) * np.nan
+                is_first=False
+
+            for s in species:
+                for l in layers:
+                    scores[f'{s}:{l}:VAR'].at[lineno] = 100*np.mean(np.sqrt(data[f'{s}:EXP:{l}:VAR']) / data[f'{s}:CTL:{l}'])
+    return scores.set_index(['region', 'sf', 'lat0', 'lon0'])
+
 
 def load_results(control_res: int, target_res: int):
-    basedir = '/extra-space/line-7'
+    basedir = '/extra-space/line-7-day-3'
     sims_fname = f'{basedir}/c{target_res}e_sims.csv'
     simulations = pd.read_csv(
         sims_fname,
@@ -89,38 +122,57 @@ def make_scoring_table(df, what, level):
     output['NMB'] = output['NMB'].map('{:.1f}'.format)
 
     output = output[['R2', 'NRMSE', 'NMAE', 'NMB']]
+
+    output['SGS'] = get_mean_subgrid_std(df)[f'{what}:{level}:VAR']
+    output['SGS'] = output['SGS'].map('{:.1f}'.format)
+
+
+    ctl_select = f'{what}:CTL:{level}'
+    output['NSTD'] = eval_stat(df, ctl_select, lambda x: 100*np.std(x)/np.mean(x)).set_index(['region', 'sf', 'lat0', 'lon0'])[ctl_select]
+    output['NSTD'] = output['NSTD'].map('{:.1f}'.format)
+
     return output
 
-def scoring_table(what, level, control_res, target_res):
+def scoring_table(what, level, control_res, target_res, desc=None):
     simulations = pd.read_csv(
         '/home/liam/temp2/sg-restart-regridder/figures/experiments.csv',
         names=['sf', 'lat0', 'lon0', 'region']
     )
     simulations.set_index(['region', 'sf', 'lat0', 'lon0'], inplace=True)
 
-    mc = [[f'c{r}e' for r in target_res], ['R2', 'NRMSE', 'NMAE', 'NMB']]
+    nstd = simulations.copy()
+    nstd['NSTD'] = np.nan
+    mc = [[f'c{r}e' for r in target_res], ['R2', 'NRMSE', 'NMAE', 'NMB', 'SGS']]
     mc = pd.MultiIndex.from_product(mc, names=['target_res', 'metric'])
     simulations = pd.DataFrame(index=simulations.index, columns=mc)
 
+
     for res in target_res:
         data_table = load_results(control_res=control_res, target_res=res)
-        simulations[f'c{res}e'] = make_scoring_table(data_table, what, level)
+        temp = make_scoring_table(data_table, what, level)
+        simulations[f'c{res}e'] = temp
+        nstd['NSTD'][nstd['NSTD'].isna()] = temp['NSTD']
+    simulations['NSTD'] = nstd['NSTD']
     simulations.index = simulations.index.map(
         lambda t: (t[0], f'{t[1]:.1f}', f'{t[2]:.1f}', f'{t[3] if t[3] < 180 else t[3] - 360:.1f}')
     )
 
-    what = what.replace('SpeciesConc_', '')
+    if desc is None:
+        desc = what.replace('_', '\\_')
+
+    if level == -1:
+        level = 'sum'
 
     table = simulations.to_latex(
         index_names=True,
         multirow=True,
         multicolumn=True,
         na_rep='---',
-        caption=f'Scoring metrics for {what} in model layer {level}',
+        caption=f'Scoring metrics for {desc} in model layer {level}',
         col_space=0
     )
 
-    table = table.replace('\\begin{tabular}', '\\scriptsize\n\\begin{tabular}')
+    table = table.replace('\\begin{tabular}', '\\tiny\n\\begin{tabular}')
 
     return table
 
@@ -129,10 +181,60 @@ def scoring_table(what, level, control_res, target_res):
 if __name__ == '__main__':
 
 
-    table = scoring_table('SpeciesConc_O3', 0, 180, [180, 360, 720])
+    table = scoring_table('SpeciesConc_O3', 0, 180, [180, 360, 720], desc='O\\textsubscript{3}')
     print(table)
-    table = scoring_table('SpeciesConc_O3', 10, 180, [180, 360, 720])
+    table = scoring_table('SpeciesConc_O3', 10, 180, [180, 360, 720], desc='O\\textsubscript{3}')
     print(table)
+    table = scoring_table('SpeciesConc_O3', 25, 180, [180, 360, 720], desc='O\\textsubscript{3}')
+    print(table)
+
+    table = scoring_table('SpeciesConc_NO', 0, 180, [180, 360, 720], desc='NO')
+    print(table)
+    table = scoring_table('SpeciesConc_NO', 10, 180, [180, 360, 720], desc='NO')
+    print(table)
+    table = scoring_table('SpeciesConc_NO', 25, 180, [180, 360, 720], desc='NO')
+    print(table)
+
+    table = scoring_table('SpeciesConc_NO2', 0, 180, [180, 360, 720], desc='NO\\textsubscript{2}')
+    print(table)
+    table = scoring_table('SpeciesConc_NO2', 10, 180, [180, 360, 720], desc='NO\\textsubscript{2}')
+    print(table)
+    table = scoring_table('SpeciesConc_NO2', 25, 180, [180, 360, 720], desc='NO\\textsubscript{2}')
+    print(table)
+
+    # with open('foo.tex', 'w') as f:
+    #     table = scoring_table('AODDust', -1, 180, [180, 360, 720], desc='AOD DUST')
+    #     print(table)
+    #     f.write(table)
+    #     table = scoring_table('AODHygWL1_OCPI', -1, 180, [180, 360, 720], desc='AOD OCPI')
+    #     print(table)
+    #     f.write(table)
+    #     table = scoring_table('AODHygWL1_BCPI', -1, 180, [180, 360, 720], desc='AOD BCPI')
+    #     print(table)
+    #     f.write(table)
+    #     table = scoring_table('AODHygWL1_SALA', -1, 180, [180, 360, 720], desc='AOD SALA')
+    #     print(table)
+    #     f.write(table)
+    #     table = scoring_table('AODHygWL1_SALC', -1, 180, [180, 360, 720], desc='AOD SALC')
+    #     print(table)
+    #     f.write(table)
+    #     table = scoring_table('AODHygWL1_SO4', -1, 180, [180, 360, 720], desc='AOD SO4')
+    #     print(table)
+    #     f.write(table)
+    #     table = scoring_table('AODSOAfromAqIsopreneWL1', -1, 180, [180, 360, 720], desc='AOD SOA from Aq ISOP')
+    #     print(table)
+    #     f.write(table)
+
+    # AODDust
+    # AODHygWL1_BCPI
+    # AODHygWL1_OCPI
+    # AODHygWL1_SALA
+    # AODHygWL1_SALC
+    # AODHygWL1_SO4
+    # AODSOAfromAqIsopreneWL1
+    # AODStratLiquidAerWL1
+    # AODPolarStratCloudWL1
+
 
 
     # normalized_rmse = eval_metric(df, score_nrmse)

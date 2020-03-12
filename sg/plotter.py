@@ -287,6 +287,53 @@ def map_axes_formatter_1(ax, **kwargs):
         ax.add_feature(states_provinces, **kwargs['states_kwargs'])
 
 
+def simple_pcolormesh(var, dataset, map_conf={}, pcolormesh_kwargs={}, **kwargs):
+    kwargs = kwargs.copy()
+    map_conf = map_conf.copy()
+    pcolormesh_kwargs = pcolormesh_kwargs.copy()
+    kwargs.setdefault('faces', [0, 1, 2, 3, 4, 5])
+    kwargs.setdefault('level', 0)
+    kwargs.setdefault('scale', 1e9)
+    kwargs.setdefault('offset', 0)
+    kwargs.setdefault('units', 'ppb')
+    kwargs.setdefault('outlier_threshold', 0.1)
+    kwargs.setdefault('title', var)
+
+    ds = dataset_factory(**dataset)
+    pcolormesh_kwargs.setdefault('vmin', ds[var].isel(lev=kwargs['level']).quantile(0.05).item() * kwargs['scale'] + kwargs['offset'])
+    pcolormesh_kwargs.setdefault('vmax', ds[var].isel(lev=kwargs['level']).quantile(0.95).item() * kwargs['scale'] + kwargs['offset'])
+    pcolormesh_kwargs.setdefault('cmap', 'cividis')
+
+    map_conf.setdefault('projection', 'ccrs.PlateCarree()')
+
+    projection = eval(map_conf.pop('projection'))
+
+    if kwargs.get('target_face_extent', False):
+        exp_grid = grid_factory(**dataset['grid'])
+        x_extent = [exp_grid.xe(5).min(), exp_grid.xe(5).max()]
+        y_extent = [exp_grid.ye(5).min(), exp_grid.ye(5).max()]
+        map_conf.setdefault('extent', [*x_extent, *y_extent])
+
+    ax = plt.axes(projection=projection)
+    # ax = plt.subplot(2,1,i+1, projection=projection)
+    map_axes_formatter_1(ax, **map_conf)
+
+    ds = dataset_factory(**dataset)
+    grid = grid_factory(**dataset['grid'])
+
+    if isinstance(grid, sg.grids.CSDataBase):
+        for face in kwargs['faces']:
+            xx, yy = grid.xe(face), grid.ye(face)
+            data = ds[var].isel(lev=kwargs['level'], nf=face).squeeze().values * kwargs['scale'] + kwargs['offset']
+            pc = plot_pcolomesh(ax, xx, yy, data, **pcolormesh_kwargs)
+    else:
+        raise NotADirectoryError('Only CS data is supported right now')
+    # if i == 0:
+    #     plt.gcf().colorbar(pc, orientation='horizontal')
+    plt.title(kwargs['title'])
+    cbar = plt.colorbar(pc, orientation='horizontal')
+    cbar.set_label(kwargs['units'])
+
 def pcolormesh_comparison(var, dataset1, dataset2, map_conf={}, pcolormesh_kwargs={}, **kwargs):
     kwargs = kwargs.copy()
     map_conf = map_conf.copy()
@@ -460,7 +507,7 @@ def r2_vs_sf_line_plot(fig: plt.Figure, var, cs_dataset, sg_datasets, distance_t
 
 if __name__ == '__main__':
     import matplotlib.backends.backend_pdf
-    with open('foo.yaml', 'r') as f:
+    with open('spot-check.yml', 'r') as f:
         input = yaml.load(f)
 
     if input.get('output', {}).get('type', None) == 'pdf':
@@ -476,6 +523,8 @@ if __name__ == '__main__':
             r2_vs_sf_line_plot(fig, var=plot_conf['var'], **plot_conf['what'])
         elif plot_conf['type'] == 'side_by_side_pcolormesh':
             pcolormesh_comparison(var=plot_conf['var'], **plot_conf['what'])
+        elif plot_conf['type'] == 'simple_pcolormesh':
+            simple_pcolormesh(var=plot_conf['var'], **plot_conf['what'])
         elif plot_conf['type'] == 'coarse-colocated-scatter-plot':
             coarse_control_scatter(plt.gca(), var=plot_conf['var'], **plot_conf['what'])
 

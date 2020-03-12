@@ -84,22 +84,23 @@ if __name__ == '__main__':
             sub_dims = ['lev', 'face', 'Ydim', 'Xdim']
             sub_coords = {k: ds_out.coords[k] for k in sub_dims}
             exp_on_ctl = xr.DataArray(np.nan, coords=sub_coords, dims=sub_dims)
-            exp_on_ctl_var = xr.DataArray(np.nan, coords=sub_coords, dims=sub_dims)
+            #exp_on_ctl_var = xr.DataArray(np.nan, coords=sub_coords, dims=sub_dims)
 
             for lev in range(nlev):
                 da_exp = ds_exp[var].squeeze().isel(lev=lev, nf=5).transpose('Ydim', 'Xdim').values
                 regridded = [np.dot(w, da_exp[i]) for w, i in zip(weights, exp_indexes)]
                 exp_on_ctl.isel(lev=lev).values[ctl_indexes] = [np.dot(w, da_exp[i]) for w, i in zip(weights, exp_indexes)]
-                exp_on_ctl_var.isel(lev=lev).values[ctl_indexes] = [
-                    np.average((da_exp[y_idx] - ymean) ** 2, weights=w) for y_idx, ymean, w in zip(exp_indexes, regridded, weights)
-                ]
+                # exp_on_ctl_var.isel(lev=lev).values[ctl_indexes] = [
+                #     np.average((da_exp[y_idx] - ymean) ** 2, weights=w) for y_idx, ymean, w in zip(exp_indexes, regridded, weights)
+                # ]
 
-            ds_out[var + '_SUBGRID_VARIANCE'] = xr.DataArray(np.nan, coords=sub_coords, dims=sub_dims)
+            # ds_out[var + '_SUBGRID_VARIANCE'] = xr.DataArray(np.nan, coords=sub_coords, dims=sub_dims)
             ds_out[var] = xr.DataArray(np.nan, coords=sub_coords, dims=sub_dims)
             ds_out[var] = exp_on_ctl
-            ds_out[var + '_SUBGRID_VARIANCE'] = exp_on_ctl_var
+            # ds_out[var + '_SUBGRID_VARIANCE'] = exp_on_ctl_var
 
     logging.info('Writing output files...')
     fname = f'{args["output_prefix"]}/lineno-{lineno}.nc'
-    ds_out.to_netcdf(fname)
+    encoding = { k: {'dtype': np.float32, 'complevel': 9, 'zlib': True} for k in ds_out.data_vars }
+    ds_out.to_netcdf(fname, encoding=encoding)
     logging.info('Done') # REPLACE_EXP_OUTPUT_DIR REPLACE_CTL_OUTPUT_DIR REPLACE_RESULTS_DIR

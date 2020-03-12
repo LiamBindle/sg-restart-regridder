@@ -170,8 +170,8 @@ plots:
     what: *colocated_scatter
 
 ## Set output specifications
-output:
-  type: 'pdf'
-  path: 'both_compares.pdf'
+#output:
+#  type: 'pdf'
+#  path: 'both_compares.pdf'
 
 
