@@ -2,6 +2,7 @@
 import numpy as np
 import xarray as xr
 from tqdm import tqdm
+import argparse
 
 
 def ufunc_mean(x, mask=None):
@@ -57,20 +58,46 @@ def add_stats(d, mask, **ufuncs):
 
 
 if __name__ == '__main__':
-    import sys
-    ds = xr.open_dataset(sys.argv[1])
+    parser = argparse.ArgumentParser(description='Generates a stretched grid initial restart file for GCHP.')
+    parser.add_argument('fin',
+                        type=str,
+                        help='input file')
+    parser.add_argument('-o',
+                        type=str,
+                        required=True,
+                        help='output file')
+    parser.add_argument('-l', '--lines',
+                        type=int,
+                        nargs='+',
+                        default=[],
+                        help='lines to process')
+    parser.add_argument('-m', '--mask',
+                        type=int,
+                        default=-1,
+                        help='selects a specific line\'s mask')
+    args = parser.parse_args()
+    ds = xr.open_dataset(args.fin)
 
     control = ds.sel(lineno=0)
 
     processed = xr.Dataset(coords={'lineno': []})
 
-    for lineno in tqdm(ds['lineno'][:5]):
+    lines = ds['lineno'].values if len(args.lines) == 0 else args.lines
+
+    if args.mask != -1:
+        supermask = get_tfmask(ds.sel(lineno=args.mask))
+    else:
+        supermask = None
+
+    for lineno in tqdm(lines):
         if lineno == 0:
             continue
 
         experiment = ds.sel(lineno=lineno)
 
         tfmask = get_tfmask(experiment)
+        if supermask is not None:
+            tfmask &= supermask
 
         metrics = add_metrics(
             control, experiment, tfmask,
@@ -101,4 +128,4 @@ if __name__ == '__main__':
         )
 
     encoding = {k: {'dtype': np.float32, 'complevel': 1, 'zlib': True} for k in processed.data_vars}
-    processed.to_netcdf(sys.argv[2], encoding=encoding)
+    processed.to_netcdf(args.o, encoding=encoding)
