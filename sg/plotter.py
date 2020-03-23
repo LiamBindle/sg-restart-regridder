@@ -507,7 +507,8 @@ def r2_vs_sf_line_plot(fig: plt.Figure, var, cs_dataset, sg_datasets, distance_t
 
 if __name__ == '__main__':
     import matplotlib.backends.backend_pdf
-    with open('spot-check.yml', 'r') as f:
+    #with open('spot-check.yml', 'r') as f:
+    with open('vmap.yml', 'r') as f:
         input = yaml.load(f)
 
     if input.get('output', {}).get('type', None) == 'pdf':

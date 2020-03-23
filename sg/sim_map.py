@@ -95,7 +95,7 @@ def find_optimal_res(cs_res, sf, tlat, tlon):
     return int(n_side)
 
 
-
+import yaml
 
 if __name__ == '__main__':
 
@@ -104,33 +104,33 @@ if __name__ == '__main__':
 
     grids = [
         {'sf': 2, 'tlat': 35, 'tlon': 264, 'color': cmap(0)},
-        *fill_space(2, 3.6, 35, 38, 264, 252, dtfal, **{'color': cmap(0), 'linewidth': 0.6}), # C180-C360
+        # *fill_space(2, 3.6, 35, 38, 264, 252, dtfal, **{'color': cmap(0), 'linewidth': 0.6}), # C180-C360
         {'sf': 3.6, 'tlat': 38, 'tlon': 252, 'color': cmap(0)},
-        *fill_space(3.6, 6.8, 38, 37, 252, 244, dtfal, **{'color': cmap(0), 'linewidth': 0.6}), # C360-C720
+        # *fill_space(3.6, 6.8, 38, 37, 252, 244, dtfal, **{'color': cmap(0), 'linewidth': 0.6}), # C360-C720
         {'sf': 6.8, 'tlat': 37, 'tlon': 244, 'color': cmap(0)},
-        *fill_space(6.8, 12.5, 37, 36, 244, 241, dtfal, **{'color': cmap(0), 'linewidth': 0.6}),
+        # *fill_space(6.8, 12.5, 37, 36, 244, 241, dtfal, **{'color': cmap(0), 'linewidth': 0.6}),
         {'sf': 12.5, 'tlat': 36, 'tlon': 241, 'color': cmap(0)},
 
         {'sf': 2, 'tlat': 48, 'tlon': 14, 'color': cmap(1)},
-        *fill_space(2, 3.4, 48, 47, 14, 5, dtfal, **{'color': cmap(1), 'linewidth': 0.6}),
+        # *fill_space(2, 3.4, 48, 47, 14, 5, dtfal, **{'color': cmap(1), 'linewidth': 0.6}),
         {'sf': 3.4, 'tlat': 47, 'tlon': 5, 'color': cmap(1)},
-        *fill_space(3.4, 6.8, 47, 42.5, 5, 12.5, dtfal, **{'color': cmap(1), 'linewidth': 0.6}),
+        # *fill_space(3.4, 6.8, 47, 42.5, 5, 12.5, dtfal, **{'color': cmap(1), 'linewidth': 0.6}),
         {'sf': 6.8, 'tlat': 42.5, 'tlon': 12.5, 'color': cmap(1)},
-        *fill_space(6.8, 15, 42.5, 45, 12.5, 10.5, dtfal, **{'color': cmap(1), 'linewidth': 0.6}),
+        # *fill_space(6.8, 15, 42.5, 45, 12.5, 10.5, dtfal, **{'color': cmap(1), 'linewidth': 0.6}),
         {'sf': 15, 'tlat': 45, 'tlon': 10.5, 'color': cmap(1)},
 
         {'sf': 2.8, 'tlat': 21.5, 'tlon': 79, 'color': cmap(2)},
-        *fill_space(2.8, 6, 21.5, 25, 79, 81, dtfal, **{'color': cmap(2), 'linewidth': 0.6}),
+        # *fill_space(2.8, 6, 21.5, 25, 79, 81, dtfal, **{'color': cmap(2), 'linewidth': 0.6}),
         {'sf': 6, 'tlat': 25, 'tlon': 81, 'color': cmap(2)},
-        *fill_space(6, 14, 25, 27.5, 81, 78.5, dtfal, **{'color': cmap(2), 'linewidth': 0.6}),
+        # *fill_space(6, 14, 25, 27.5, 81, 78.5, dtfal, **{'color': cmap(2), 'linewidth': 0.6}),
         {'sf': 14, 'tlat': 27.5, 'tlon': 78.5, 'color': cmap(2)},
 
         {'sf': 2.7, 'tlat': 5, 'tlon': 111, 'color': cmap(3)},
-        *fill_space(2.7, 4, 5, 0, 111, 108, dtfal, **{'color': cmap(3), 'linewidth': 0.6}),
+        # *fill_space(2.7, 4, 5, 0, 111, 108, dtfal, **{'color': cmap(3), 'linewidth': 0.6}),
         {'sf': 4, 'tlat': 0, 'tlon': 108, 'color': cmap(3)},
-        *fill_space(4, 7, 0, -5, 108, 110, dtfal, **{'color': cmap(3), 'linewidth': 0.6}),
+        # *fill_space(4, 7, 0, -5, 108, 110, dtfal, **{'color': cmap(3), 'linewidth': 0.6}),
         {'sf': 7, 'tlat': -5, 'tlon': 110, 'color': cmap(3)},
-        *fill_space(7, 15, -5, -7, 110, 108, dtfal, **{'color': cmap(3), 'linewidth': 0.6}),
+        # *fill_space(7, 15, -5, -7, 110, 108, dtfal, **{'color': cmap(3), 'linewidth': 0.6}),
         {'sf': 15, 'tlat': -7, 'tlon': 108, 'color': cmap(3)},
     ]
 
@@ -158,10 +158,16 @@ if __name__ == '__main__':
     sf = np.array([d['sf'] for d in grids])
     tlat = np.array([d['tlat'] for d in grids])
     tlon = np.array([d['tlon'] for d in grids])
-    #
-    # res = np.array([find_optimal_res(control_res, s, lat0, lon0) for s, lat0, lon0 in tqdm.tqdm(zip(sf, tlat, tlon))])
-    #
-    #
+
+    res = np.array([find_optimal_res(control_res, s, lat0, lon0) for s, lat0, lon0 in tqdm.tqdm(zip(sf, tlat, tlon))])
+
+    grid_dict = []
+    for i, (r, s, lat0, lon0) in enumerate(zip(res, sf, tlat, tlon)):
+        grid_dict.append({'cs_res': int(r), 'stretch_factor': float(s), 'target_lat': float(lat0), 'target_lon': float(lon0)})
+
+    # print('\n'.join(grid_dict))
+    with open('c720e.yaml', 'w') as f:
+        yaml.safe_dump(grid_dict, f)
     # res_factor = res / 48
     # complexity = 2**(res_factor - 1)
     #
@@ -179,31 +185,31 @@ if __name__ == '__main__':
     # for nc, nn, r, s, lat0, lon0 in zip(ncores, nnodes, res, sf, tlat, tlon):
     #     gkw = {'sf': s, 'tlat': lat0, 'tlon': lon0}
     #     if r < 24 or r > 120:
-    #         print(f'-- {nc:4d},{nn:7d},{32:7d},{s:7.2f},{r:7d}{lat0:7.2f},{lon0:7.2f}')
+    #         print(f'-- {nc:4d},{nn:7d},{32:7d},{s:7.2f},{r:7d},{lat0:7.2f},{lon0:7.2f}')
     #         gkw['color'] = 'red'
     #     else:
-    #         print(f'{nc:7d},{nn:7d},{32:7d},{s:7.2f},{r:7d}{lat0:7.2f},{lon0:7.2f}')
+    #         print(f'{nc:7d},{nn:7d},{32:7d},{s:7.2f},{r:7d},{lat0:7.2f},{lon0:7.2f}')
     #         gkw['color'] = 'blue'
     #     grids2.append(gkw)
-
-    for s, lat0, lon0 in zip(sf, tlat, tlon):
-        print(f'{s:7.2f},{lat0:7.2f},{lon0:7.2f}')
-
-    plt.figure()
-    ax = plt.axes(projection=ccrs.EqualEarth())
-    ax.set_global()
-
-    ax.add_feature(cfeature.OCEAN)
-    ax.add_feature(cfeature.LAND, edgecolor='black', linewidth=0.2)
-    ax.add_feature(cfeature.LAKES, edgecolor='black', linewidth=0.2)
-    ax.add_feature(cfeature.STATES, edgecolor='black', linewidth=0.1)
-    ax.add_feature(cfeature.BORDERS, edgecolor='black', linewidth=0.2)
-
-    for g in tqdm.tqdm(grids):
-        draw_target_face_outline(ax, **g)
-
-    plt.tight_layout()
-    plt.show()
+    #
+    # for s, lat0, lon0 in zip(sf, tlat, tlon):
+    #     print(f'{s:7.2f},{lat0:7.2f},{lon0:7.2f}')
+    #
+    # plt.figure()
+    # ax = plt.axes(projection=ccrs.EqualEarth())
+    # ax.set_global()
+    #
+    # ax.add_feature(cfeature.OCEAN)
+    # ax.add_feature(cfeature.LAND, edgecolor='black', linewidth=0.2)
+    # ax.add_feature(cfeature.LAKES, edgecolor='black', linewidth=0.2)
+    # ax.add_feature(cfeature.STATES, edgecolor='black', linewidth=0.1)
+    # ax.add_feature(cfeature.BORDERS, edgecolor='black', linewidth=0.2)
+    #
+    # for g in tqdm.tqdm(grids):
+    #     draw_target_face_outline(ax, **g)
+    #
+    # plt.tight_layout()
+    # plt.show()
 
 
 

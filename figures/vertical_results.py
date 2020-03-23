@@ -2,52 +2,35 @@
 import numpy as np
 import xarray as xr
 from tqdm import tqdm
-import argparse
 
 
-def ufunc_mean(x, mask):
-    if len(x.shape) == 4:
-        x = x[:, mask]
-    else:
-        x = x[mask]
-    return np.mean(x, axis=-1)
+def ufunc_mean(x, mask=None):
+    if mask is None:
+        mask = np.isfinite(x[0, :, :, :])
+    return np.mean(x[:, mask], axis=-1)
 
 
-def ufunc_std(x, mask):
-    if len(x.shape) == 4:
-        x = x[:, mask]
-    else:
-        x = x[mask]
-    return np.std(x, axis=-1)
+def ufunc_std(x, mask=None):
+    if mask is None:
+        mask = np.isfinite(x[0, :, :, :])
+    return np.std(x[:, mask], axis=-1)
 
 
 def ufunc_rmse(x, y, mask):
-    if len(x.shape) == 4:
-        x = x[:, mask]
-        y = y[:, mask]
-    else:
-        x = x[mask]
-        y = y[mask]
+    x = x[:, mask]
+    y = y[:, mask]
     return np.sqrt(np.sum((y-x)**2, axis=-1)/np.count_nonzero(mask))
 
 
 def ufunc_mae(x, y, mask):
-    if len(x.shape) == 4:
-        x = x[:, mask]
-        y = y[:, mask]
-    else:
-        x = x[mask]
-        y = y[mask]
+    x = x[:, mask]
+    y = y[:, mask]
     return np.sum(np.abs(y-x), axis=-1)/np.count_nonzero(mask)
 
 
 def ufunc_mb(x, y, mask):
-    if len(x.shape) == 4:
-        x = x[:, mask]
-        y = y[:, mask]
-    else:
-        x = x[mask]
-        y = y[mask]
+    x = x[:, mask]
+    y = y[:, mask]
     return np.sum(y-x, axis=-1)/np.count_nonzero(mask)
 
 
@@ -74,46 +57,20 @@ def add_stats(d, mask, **ufuncs):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Generates a stretched grid initial restart file for GCHP.')
-    parser.add_argument('fin',
-                        type=str,
-                        help='input file')
-    parser.add_argument('-o',
-                        type=str,
-                        required=True,
-                        help='output file')
-    parser.add_argument('-l', '--lines',
-                        type=int,
-                        nargs='+',
-                        default=[],
-                        help='lines to process')
-    parser.add_argument('-m', '--mask',
-                        type=int,
-                        default=-1,
-                        help='selects a specific line\'s mask')
-    args = parser.parse_args()
-    ds = xr.open_dataset(args.fin)
+    import sys
+    ds = xr.open_dataset(sys.argv[1])
 
     control = ds.sel(lineno=0)
 
     processed = xr.Dataset(coords={'lineno': []})
 
-    lines = ds['lineno'].values if len(args.lines) == 0 else args.lines
-
-    if args.mask != -1:
-        supermask = get_tfmask(ds.sel(lineno=args.mask))
-    else:
-        supermask = None
-
-    for lineno in tqdm(lines):
+    for lineno in tqdm(ds['lineno'][:5]):
         if lineno == 0:
             continue
 
         experiment = ds.sel(lineno=lineno)
 
         tfmask = get_tfmask(experiment)
-        if supermask is not None:
-            tfmask &= supermask
 
         metrics = add_metrics(
             control, experiment, tfmask,
@@ -144,4 +101,4 @@ if __name__ == '__main__':
         )
 
     encoding = {k: {'dtype': np.float32, 'complevel': 1, 'zlib': True} for k in processed.data_vars}
-    processed.to_netcdf(args.o, encoding=encoding)
+    processed.to_netcdf(sys.argv[2], encoding=encoding)
