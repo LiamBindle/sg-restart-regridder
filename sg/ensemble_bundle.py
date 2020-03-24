@@ -94,7 +94,10 @@ if __name__ == '__main__':
         ctl_indexes = tuple(zip(*ctl_indexes))
 
         for output_file in args["output_files"]:
-            ds_exp = xr.open_dataset(os.path.join(sim['short_name'], 'OutputDir', output_file))
+            output_filename = os.path.join(sim['short_name'], 'OutputDir', output_file)
+            if not os.path.exists(output_filename):
+                continue
+            ds_exp = xr.open_dataset(output_filename)
             for var in args["vars"]:
                 if var not in ds_exp:
                     continue
