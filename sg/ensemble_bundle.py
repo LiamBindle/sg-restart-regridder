@@ -83,7 +83,12 @@ if __name__ == '__main__':
     sub_coords = {k: ds_out.coords[k] for k in sub_dims}
 
     for sim in tqdm(sims):
-        with open(os.path.join(sim['short_name'], 'conf.yml'), 'r') as f:
+        sim_conf = os.path.join(sim['short_name'], 'conf.yml')
+
+        if not os.path.exists(sim_conf):
+            continue
+
+        with open(sim_conf, 'r') as f:
             exp_conf = yaml.safe_load(f)['grid']
         exp_grid = StretchedGrid(exp_conf['cs_res'], exp_conf['stretch_factor'], exp_conf['target_lat'], exp_conf['target_lon'])
 
