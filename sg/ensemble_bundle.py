@@ -92,6 +92,14 @@ if __name__ == '__main__':
             exp_conf = yaml.safe_load(f)['grid']
         exp_grid = StretchedGrid(exp_conf['cs_res'], exp_conf['stretch_factor'], exp_conf['target_lat'], exp_conf['target_lon'])
 
+        id_only_params_da = dict(coords = {'ID': [sim['short_name']]}, dims = ['ID'])
+        ds_out = ds_out.merge({
+            'stretch_factor': xr.DataArray([exp_conf['stretch_factor']], **id_only_params_da),
+            'target_lat': xr.DataArray([exp_conf['target_lat']], **id_only_params_da),
+            'target_lon': xr.DataArray([exp_conf['target_lon']], **id_only_params_da),
+            'cs_res': xr.DataArray([exp_conf['cs_res']], **id_only_params_da),
+        })
+
         ctl_indexes, exp_indexes, weights = many_comparable_gridboxes(
             ctl_grid,
             exp_grid
