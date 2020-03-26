@@ -151,7 +151,7 @@ if __name__ == '__main__':
                 ds_out[s[0]] += ds_out[s[ds_index]]
 
     if args['sum_abs'] is not None:
-        for s in args['sum']:
+        for s in args['sum_abs']:
             ds_out[s[0]] = abs(ds_out[s[1]])
             for ds_index in range(2,len(s)):
                 ds_out[s[0]] += abs(ds_out[s[ds_index]])
