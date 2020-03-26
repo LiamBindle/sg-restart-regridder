@@ -45,6 +45,13 @@ if __name__ == '__main__':
                         action='append',
                         required=False,
                         help='variables to keep')
+    parser.add_argument('--sum-abs',
+                        metavar='V',
+                        nargs='+',
+                        type=str,
+                        action='append',
+                        required=False,
+                        help='variables to keep')
     parser.add_argument('--keep',
                         metavar='V',
                         nargs='+',
@@ -142,6 +149,12 @@ if __name__ == '__main__':
             ds_out[s[0]] = ds_out[s[1]]
             for ds_index in range(2,len(s)):
                 ds_out[s[0]] += ds_out[s[ds_index]]
+
+    if args['sum_abs'] is not None:
+        for s in args['sum']:
+            ds_out[s[0]] = abs(ds_out[s[1]])
+            for ds_index in range(2,len(s)):
+                ds_out[s[0]] += abs(ds_out[s[ds_index]])
 
     if args['keep'] is not None:
         ds_out = ds_out.drop([label for label in ds_out.data_vars if label not in args['keep']])
