@@ -174,13 +174,16 @@ if __name__ == '__main__':
     for var in args["vars"]:
         for output_file in args['output_files']:
             if var in ds_ctl[output_file]:
+                sub_coords_copy = sub_coords.copy()
+                if 'lev' not in ds_ctl[output_file][var].dims:
+                    del sub_coords_copy['lev']
                 ds_out = ds_out.merge({
                     var: ds_ctl[output_file][var].expand_dims(
                         'ID', 0
                     ).rename({
                         'nf': 'face'
                     }).assign_coords({
-                        'ID': ['CTL'], **sub_coords
+                        'ID': ['CTL'], **sub_coords_copy
                     })})
 
     if args['sum'] is not None:
