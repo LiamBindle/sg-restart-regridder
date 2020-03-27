@@ -89,6 +89,8 @@ if __name__ == '__main__':
     sub_dims = ['lev', 'face', 'Ydim', 'Xdim']
     sub_coords = {k: ds_out.coords[k] for k in sub_dims}
 
+    natives = set()
+
     for sim in tqdm(sims):
         sim_conf = os.path.join(sim['short_name'], 'conf.yml')
 
@@ -122,15 +124,52 @@ if __name__ == '__main__':
                 if var not in ds_exp:
                     continue
 
-                exp_on_ctl = xr.DataArray(np.nan, coords=sub_coords, dims=sub_dims)
+                if 'lev' in ds_exp[var].dims:
+                    exp_on_ctl = xr.DataArray(np.nan, coords=sub_coords, dims=sub_dims)
 
-                for lev in range(nlev):
-                    da_exp = ds_exp[var].squeeze().isel(lev=lev, nf=5).transpose('Ydim', 'Xdim').values
+                    da_native = []
+
+                    for lev in range(nlev):
+                        da_exp = ds_exp[var].squeeze().isel(lev=lev, nf=5).transpose('Ydim', 'Xdim').values
+                        da_native.append(da_exp.copy())
+                        regridded = [np.dot(w, da_exp[i]) for w, i in zip(weights, exp_indexes)]
+                        exp_on_ctl.isel(lev=lev).values[ctl_indexes] = [
+                            np.dot(w, da_exp[i]) for w, i in zip(weights, exp_indexes)
+                        ]
+                    da_native = np.array(da_native)
+                    da_native = xr.DataArray(
+                        da_native,
+                        coords={'lev': sub_coords['lev'].copy()},
+                        dims=[f'lev', f'Ydim-C{da_native.shape[1]}', f'Xdim-C{da_native.shape[2]}']
+                    )
+                else:
+                    sub_coords_no_lev = sub_coords.copy()
+                    del sub_coords_no_lev['lev']
+                    sub_dims_no_lev = sub_dims.copy()
+                    sub_dims_no_lev.remove('lev')
+
+                    exp_on_ctl = xr.DataArray(
+                        np.nan,
+                        coords=sub_coords_no_lev,
+                        dims=sub_dims_no_lev
+                    )
+
+                    da_exp = ds_exp[var].squeeze().isel(nf=5).transpose('Ydim', 'Xdim').values
+                    da_native = xr.DataArray(da_exp.copy(), dims=[f'Ydim-C{da_exp.shape[0]}', f'Xdim-C{da_exp.shape[1]}'])
                     regridded = [np.dot(w, da_exp[i]) for w, i in zip(weights, exp_indexes)]
-                    exp_on_ctl.isel(lev=lev).values[ctl_indexes] = [
+                    exp_on_ctl.values[ctl_indexes] = [
                         np.dot(w, da_exp[i]) for w, i in zip(weights, exp_indexes)
                     ]
-                ds_out = ds_out.merge({var: exp_on_ctl.expand_dims('ID', 0).assign_coords({'ID': [sim['short_name']]})})
+
+                native_res = da_native.shape[-1]
+
+
+                ds_out = ds_out.merge({
+                    var: exp_on_ctl.expand_dims('ID', 0).assign_coords({'ID': [sim['short_name']]}),
+                    f'{var}_native_C{native_res}': da_native.expand_dims(f'ID_native_C{native_res}', 0).assign_coords({f'ID_native_C{native_res}': [sim['short_name']]})
+                })
+                natives.add(f'_native_C{native_res}')
+
 
     for var in args["vars"]:
         for output_file in args['output_files']:
@@ -145,19 +184,27 @@ if __name__ == '__main__':
                     })})
 
     if args['sum'] is not None:
-        for s in args['sum']:
-            ds_out[s[0]] = ds_out[s[1]]
-            for ds_index in range(2,len(s)):
-                ds_out[s[0]] += ds_out[s[ds_index]]
+        for sum_descs in args['sum']:
+            variants = [[f'{name}{variant}' for name in sum_descs] for variant in ['', *natives]]
+            for s in variants:
+                ds_out[s[0]] = ds_out[s[1]].copy()
+                for ds_index in range(2,len(s)):
+                    ds_out[s[0]] += ds_out[s[ds_index]]
+
+
 
     if args['sum_abs'] is not None:
-        for s in args['sum_abs']:
-            ds_out[s[0]] = abs(ds_out[s[1]])
-            for ds_index in range(2,len(s)):
-                ds_out[s[0]] += abs(ds_out[s[ds_index]])
+        for sum_descs in args['sum']:
+            variants = [[f'{name}{variant}' for name in sum_descs] for variant in ['', *natives]]
+            for s in variants:
+                ds_out[s[0]] = abs(ds_out[s[1]]).copy()
+                for ds_index in range(2,len(s)):
+                    ds_out[s[0]] += abs(ds_out[s[ds_index]])
+
 
     if args['keep'] is not None:
-        ds_out = ds_out.drop([label for label in ds_out.data_vars if label not in args['keep']])
+        keepers = [f'{name}{variant}' for name in args['keep'] for variant in ['', *natives]]
+        ds_out = ds_out.drop([label for label in ds_out.data_vars if label not in keepers])
 
     encoding = {k: {'dtype': np.float32, 'complevel': 9, 'zlib': True} for k in ds_out.data_vars}
     delayed_obj = ds_out.to_netcdf(os.path.join(args["output_prefix"], 'summary.nc'), encoding=encoding, compute=False)
