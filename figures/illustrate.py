@@ -99,11 +99,8 @@ def grid_box_length(ax, xx_sg, yy_sg, xx_cs, yy_cs, **kwargs):
             ax.add_geometries([box], gnomonic, edgecolor='None', facecolor=c, linewidth=0)
 
 
-
-
-
 if __name__ == '__main__':
-    fig = plt.figure(figsize=(6, 3.9))
+    fig = plt.figure(figsize=(4.724, 2.3))
     gs = plt.GridSpec(2, 32, figure=fig)
 
     front_projection = ccrs.Orthographic(0+20, 20)
@@ -155,4 +152,5 @@ if __name__ == '__main__':
     plt.text(0.02, 0.7, 'Front', rotation='horizontal', va='center', ha='left', transform=plt.gcf().transFigure)
     #plt.gcf().colorbar(cb, ax=[ax_front, ax_back])
     plt.tight_layout()
-    plt.show()
+    # plt.show()
+    plt.savefig('/home/liam/Copernicus_LaTeX_Package/figures/sg-illustrate.png')

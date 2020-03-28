@@ -50,7 +50,7 @@ if __name__ == '__main__':
     ]
 
 
-    plt.figure(figsize=(3.15,1.5))
+    plt.figure(figsize=(3.26772,1.6))
     ax = plt.axes(projection=ccrs.EqualEarth())
     ax.set_global()
 
@@ -93,8 +93,9 @@ if __name__ == '__main__':
 
 
     plt.tight_layout()
-    plt.show()
+    # plt.show()
 
+    plt.savefig('/home/liam/Copernicus_LaTeX_Package/figures/sg-experiments.png')
 
 
 

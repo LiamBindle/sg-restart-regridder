@@ -26,7 +26,7 @@ if __name__ == '__main__':
     yy2 = schmidt_transform(yy, ss)
 
 
-    plt.figure(figsize=(3.15, 3))
+    plt.figure(figsize=(3.26772, 2.8))
 
 
     r_earth = 6378.1  # km
@@ -81,10 +81,10 @@ if __name__ == '__main__':
     # plt.text(12.89, 3402, '1', horizontalalignment='center', verticalalignment='center')
     # plt.text(10.52, 14288, '> 8', horizontalalignment='center', verticalalignment='center')
 
-    plt.xlabel('Stretch Factor')
+    plt.xlabel('Stretch-factor, [1]')
     plt.ylabel("Distance from target, [km]")
 
     plt.tight_layout()
-    plt.show()
-
+    # plt.show()
+    plt.savefig('/home/liam/Copernicus_LaTeX_Package/figures/grid-box-divergence.png')
 
