@@ -6,6 +6,8 @@ import labellines
 
 import matplotlib.colors as colors
 
+import figures
+
 
 def schmidt_transform(y, s):
     y = y * np.pi / 180
@@ -86,5 +88,7 @@ if __name__ == '__main__':
 
     plt.tight_layout()
     # plt.show()
-    plt.savefig('/home/liam/Copernicus_LaTeX_Package/figures/grid-box-divergence.png')
+
+    figures.savefig(plt.gcf(), 'grid-box-divergence.eps')
+    #plt.savefig('/home/liam/Copernicus_LaTeX_Package/figures/grid-box-divergence.png')
 
