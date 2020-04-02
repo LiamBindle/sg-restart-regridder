@@ -122,7 +122,7 @@ if __name__ == '__main__':
                         help='path to output')
     parser.add_argument('-norm',
                         metavar='N',
-                        type=int,
+                        type=float,
                         nargs=2,
                         default=None,
                         help='norm')
