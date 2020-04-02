@@ -120,6 +120,12 @@ if __name__ == '__main__':
                         type=str,
                         default='output.png',
                         help='path to output')
+    parser.add_argument('-norm',
+                        metavar='N',
+                        type=int,
+                        nargs=2,
+                        default=None,
+                        help='norm')
     parser.add_argument('-w',
                         metavar='W',
                         type=int,
@@ -132,6 +138,7 @@ if __name__ == '__main__':
                         metavar='A',
                         nargs='+',
                         type=str,
+                        default=[],
                         choices=['sum', 'diff', 'div'])
     args = vars(parser.parse_args())
     plt.rc('text', usetex=False)
@@ -168,7 +175,10 @@ if __name__ == '__main__':
             cmap = 'RdBu_r'
 
     # Make plot
-    norm = plt.Normalize(vmin=total.quantile(0.05), vmax=total.quantile(0.95))
+    if args['norm'] is None:
+        norm = plt.Normalize(vmin=total.quantile(0.05), vmax=total.quantile(0.95))
+    else:
+        norm = plt.Normalize(args['norm'][0], args['norm'][1])
 
     with open(args['c'], 'r') as f:
         conf = yaml.safe_load(f)
