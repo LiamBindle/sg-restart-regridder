@@ -52,9 +52,12 @@ def xy_to_polygons(xy, transform=None, error_on_bad_polygon=True):
     zero_area = []
     for i, polygon_xy in enumerate(xy):
         polygons[i] = shapely.geometry.Polygon(polygon_xy)
-        if not polygons[i].is_valid:
+
+        if np.count_nonzero(np.isnan(polygon_xy)) > 0:
             bad.append(i)
-        if polygons[i].area <= 0:
+        elif not polygons[i].is_valid:
+            bad.append(i)
+        elif polygons[i].area <= 0:
             zero_area.append(i)
 
     if error_on_bad_polygon and (len(bad) > 0 or len(zero_area) > 0):
@@ -102,6 +105,10 @@ def ciwam(grid_in: sg.grids.CSDataBase, grid_out: sg.grids.CSDataBase):
 
     flat_index = lambda grid, f, i, j: f*(grid.csres**2) + i*grid.csres + j
 
+    bad_gnomonic = lambda poly: not poly.is_valid or not poly.is_simple or poly.area <= 0.0
+
+    gno_proj = lambda xe, ye: pyproj.Proj(ccrs.Gnomonic(ye[ye.shape[0]//2, ye.shape[1]//2], xe[xe.shape[0]//2, xe.shape[1]//2]).proj4_init)
+
     # ax = quick_map()
 
     for face_out in tqdm(range(6), desc='Output face', unit='face'):
@@ -123,20 +130,14 @@ def ciwam(grid_in: sg.grids.CSDataBase, grid_out: sg.grids.CSDataBase):
 
             minor_in_indexes = p1_intersects_in_p2_extent(minor_in, minor_out, return_slices=False)
 
-            center_x_in = (grid_in.xe(face_in) % 360)[grid_in.csres // 2, grid_in.csres // 2]
-            center_y_in = grid_in.ye(face_in)[grid_in.csres // 2, grid_in.csres // 2]
-            gno_in_crs = ccrs.Gnomonic(center_y_in, center_x_in)
+            gno_x = (grid_in.xe(face_in) % 360)[grid_in.csres // 2, grid_in.csres // 2]
+            gno_y = grid_in.ye(face_in)[grid_in.csres // 2, grid_in.csres // 2]
+            gno_in_crs = ccrs.Gnomonic(gno_y, gno_x)
             gno_in = pyproj.Proj(gno_in_crs.proj4_init)
-
-            # laea_in_centered = pyproj.Proj(
-            #     f'+proj=laea +lat_0={center_y_in} +lon_0={center_x_in}  +x_0=0 +y_0=0 +a=6370997 +b=6370997 +units=m +no_defs'
-            # )
-
-            # minor_in_ea2 = transform_xy(minor_in_ll, latlon, laea_in_centered)
-            # minor_in_check = xy_to_polygons(minor_in_ea2, error_on_bad_polygon=True) # this could be changed to false but then more error checking for wrapping boxes needs to be added
-
-            minor_out_gno = xy_to_polygons(transform_xy(minor_out_ll, latlon, gno_in), error_on_bad_polygon=False)
-            minor_in_gno = xy_to_polygons(transform_xy(minor_in_ll, latlon, gno_in), error_on_bad_polygon=True)
+            minor_out_gno_xy = transform_xy(minor_out_ll, latlon, gno_in)
+            minor_out_gno = xy_to_polygons(minor_out_gno_xy, error_on_bad_polygon=False)
+            minor_in_gno_xy = transform_xy(minor_in_ll, latlon, gno_in)
+            minor_in_gno = xy_to_polygons(minor_in_gno_xy, error_on_bad_polygon=False)
 
             for i in range(grid_out.csres):
                 for j in range(grid_out.csres):
@@ -147,17 +148,37 @@ def ciwam(grid_in: sg.grids.CSDataBase, grid_out: sg.grids.CSDataBase):
                         gridbox_out = minor_out[i, j]
                         gridbox_in = minor_in[indexes[0], indexes[1]]
 
-                        if minor_out
-
-                        #gridbox_in_check = minor_in_check[indexes[0], indexes[1]]
-
-                        # check that the original laea projection looks valid
-                        # if np.abs((gridbox_in.area - gridbox_in_check.area) / gridbox_in_check.area) > 0.4:
-                        #     continue
+                        box_in = minor_in_gno[indexes[0], indexes[1]]
+                        box_out = minor_out_gno[i, j]
 
                         weight = gridbox_out.intersection(gridbox_in).area / gridbox_out.area
 
                         if weight > 0:
+
+                            # If input gridbox is bad in gnomonic then we must refine it's projection
+                            if bad_gnomonic(box_in) and weight > 0.1:
+                                new_gno_proj = pyproj.Proj(ccrs.Gnomonic(
+                                    grid_in.yc(face_in)[indexes[0], indexes[1]],
+                                    grid_in.xc(face_in)[indexes[0], indexes[1]]
+                                ).proj4_init)
+                                # update box_in and box_out
+                                box_in = shapely.geometry.Polygon(
+                                    transform_xy(minor_in_ll[indexes[0], indexes[1]], latlon, new_gno_proj)
+                                )
+                                box_out = shapely.geometry.Polygon(
+                                    transform_xy(minor_out_ll[i, j], latlon, new_gno_proj)
+                                )
+                                # Save back
+                                minor_out_gno[i, j] = box_out
+                                minor_in_gno[indexes[0], indexes[1]] = box_in
+
+                                if bad_gnomonic(box_in):
+                                    raise RuntimeError('Bad gnomonic projection at maxium refinement')
+
+                            # skip if box_out is bad or no intersect
+                            if bad_gnomonic(box_out) or not box_out.intersects(box_in):
+                                continue
+
                             # if face_in == 2 and face_out == 0 and row_index == 3:
                             #     draw_polygons(ax, minor_in_ll[indexes[0], indexes[1]], ccrs.PlateCarree(), label=f'i:{indexes[0]}, j:{indexes[1]}, weight={weight}')
                             #     draw_polygons(ax, minor_out_ll[i, j], ccrs.PlateCarree(), color='k', label=f'i:{i}, j:{j}')
