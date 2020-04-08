@@ -102,6 +102,8 @@ def ciwam(grid_in: sg.grids.CSDataBase, grid_out: sg.grids.CSDataBase):
 
     flat_index = lambda grid, f, i, j: f*(grid.csres**2) + i*grid.csres + j
 
+    # ax = quick_map()
+
     for face_out in tqdm(range(6), desc='Output face', unit='face'):
         minor_out_ll = get_minor_xy(grid_out.xe(face_out) % 360, grid_out.ye(face_out))
 
@@ -121,6 +123,21 @@ def ciwam(grid_in: sg.grids.CSDataBase, grid_out: sg.grids.CSDataBase):
 
             minor_in_indexes = p1_intersects_in_p2_extent(minor_in, minor_out, return_slices=False)
 
+            center_x_in = (grid_in.xe(face_in) % 360)[grid_in.csres // 2, grid_in.csres // 2]
+            center_y_in = grid_in.ye(face_in)[grid_in.csres // 2, grid_in.csres // 2]
+            gno_in_crs = ccrs.Gnomonic(center_y_in, center_x_in)
+            gno_in = pyproj.Proj(gno_in_crs.proj4_init)
+
+            # laea_in_centered = pyproj.Proj(
+            #     f'+proj=laea +lat_0={center_y_in} +lon_0={center_x_in}  +x_0=0 +y_0=0 +a=6370997 +b=6370997 +units=m +no_defs'
+            # )
+
+            # minor_in_ea2 = transform_xy(minor_in_ll, latlon, laea_in_centered)
+            # minor_in_check = xy_to_polygons(minor_in_ea2, error_on_bad_polygon=True) # this could be changed to false but then more error checking for wrapping boxes needs to be added
+
+            minor_out_gno = xy_to_polygons(transform_xy(minor_out_ll, latlon, gno_in), error_on_bad_polygon=False)
+            minor_in_gno = xy_to_polygons(transform_xy(minor_in_ll, latlon, gno_in), error_on_bad_polygon=True)
+
             for i in range(grid_out.csres):
                 for j in range(grid_out.csres):
                     row_index = flat_index(grid_out, face_out, i, j)
@@ -130,12 +147,25 @@ def ciwam(grid_in: sg.grids.CSDataBase, grid_out: sg.grids.CSDataBase):
                         gridbox_out = minor_out[i, j]
                         gridbox_in = minor_in[indexes[0], indexes[1]]
 
+                        if minor_out
+
+                        #gridbox_in_check = minor_in_check[indexes[0], indexes[1]]
+
+                        # check that the original laea projection looks valid
+                        # if np.abs((gridbox_in.area - gridbox_in_check.area) / gridbox_in_check.area) > 0.4:
+                        #     continue
+
                         weight = gridbox_out.intersection(gridbox_in).area / gridbox_out.area
 
                         if weight > 0:
+                            # if face_in == 2 and face_out == 0 and row_index == 3:
+                            #     draw_polygons(ax, minor_in_ll[indexes[0], indexes[1]], ccrs.PlateCarree(), label=f'i:{indexes[0]}, j:{indexes[1]}, weight={weight}')
+                            #     draw_polygons(ax, minor_out_ll[i, j], ccrs.PlateCarree(), color='k', label=f'i:{i}, j:{j}')
                             M_data.append(weight)
                             M_i.append(row_index)
                             M_j.append(col_index)
+    # plt.legend()
+    # plt.show()
 
     M = scipy.sparse.coo_matrix((M_data, (M_i, M_j)), shape=(6 * grid_out.csres ** 2, 6 * grid_in.csres ** 2))
 
