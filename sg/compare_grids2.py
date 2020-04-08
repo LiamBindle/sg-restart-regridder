@@ -29,8 +29,19 @@ def transform_xy(xy_in, in_proj: pyproj.Proj, out_proj: pyproj.Proj):
     return xy_out
 
 
-def longest_edge(xy):
-    return np.max(np.diff(xy, axis=-2))
+def edge_length(xy, use_central_angle=False):
+    if use_central_angle:
+        diff = central_angle(xy[..., :-1, 0], xy[..., :-1, 1], xy[..., 1:, 0], xy[..., 1:, 1])
+    else:
+        diff = np.diff(xy, axis=-2)
+    return diff
+
+def longest_edge(xy, use_central_angle=False):
+    if use_central_angle:
+        diff = central_angle(xy[..., :-1, 0], xy[..., :-1, 1], xy[..., 1:, 0], xy[..., 1:, 1])
+    else:
+        diff = np.diff(xy, axis=-2)
+    return np.max(diff)
 
 
 def polygon_areas(polygons):
@@ -72,6 +83,18 @@ def xy_to_polygons(xy, transform=None, error_on_bad_polygon=True):
     return np.reshape(polygons, output_shape)
 
 
+def central_angle(x0, y0, x1, y1):
+    RAD2DEG = 180 / np.pi
+    DEG2RAD = np.pi / 180
+
+    x0 = x0 * DEG2RAD
+    x1 = x1 * DEG2RAD
+    y0 = y0 * DEG2RAD
+    y1 = y1 * DEG2RAD
+
+    return np.arccos(np.sin(y0) * np.sin(y1) + np.cos(y0) * np.cos(y1) * np.cos(np.abs(x0-x1))) * RAD2DEG
+
+
 def p1_intersects_in_p2_extent(p1: np.ndarray, p2: np.ndarray, return_slices=True):
     p1_indexes = np.array([ar.flatten() for ar in np.meshgrid(*[np.arange(s) for s in p1.shape], indexing='ij')])
     p1 = p1.flatten().tolist()
@@ -95,6 +118,165 @@ def p1_intersects_in_p2_extent(p1: np.ndarray, p2: np.ndarray, return_slices=Tru
 import scipy.sparse
 from tqdm import tqdm
 
+
+def map_gridbox_intersects(xy_in, xy_in_matches, xy_out, xy_out_ij, transform):
+    ax = quick_map(transform)
+    draw_polygons(ax, xy_out[xy_out_ij[0], xy_out_ij[1]], transform=transform, color='k')
+    for match in xy_in_matches:
+        draw_polygons(ax, xy_in[match[0], match[1]], transform=transform, color='red')
+    plt.title(xy_out_ij)
+    plt.show()
+
+
+def colocated_centers(xc1, yc1, xc2, yc2, dist_tol_abs):
+    indexes1 = np.array([ar.flatten() for ar in np.meshgrid(*[np.arange(s) for s in xc1.shape], indexing='ij')])
+    indexes2 = np.array([ar.flatten() for ar in np.meshgrid(*[np.arange(s) for s in xc2.shape], indexing='ij')])
+    data1 = np.moveaxis([xc1.flatten(), yc1.flatten()], 0, -1)
+    data2 = np.moveaxis([xc2.flatten(), yc2.flatten()], 0, -1)
+    kdtree1 = scipy.spatial.KDTree(data1)
+    kdtree2 = scipy.spatial.KDTree(data2)
+    nearby = kdtree1.query_ball_tree(kdtree2, dist_tol_abs)
+
+    # nearby is list of indexes in 2 for each in 1
+    co1 = []
+    co2 = []
+    for i, neighbors in enumerate(nearby):
+        for neighbor in neighbors:
+            co1.append(indexes1[:,i])
+            co2.append(indexes2[:,neighbor])
+
+    # Put into format that can index original arrays
+    co1 = tuple([idx_list for idx_list in np.moveaxis(np.array(co1), 0, -1)])
+    co2 = tuple([idx_list for idx_list in np.moveaxis(np.array(co2), 0, -1)])
+    return co1, co2
+
+
+def determine_blocksize(xy, xc, yc):
+    latlon = pyproj.Proj('+init=epsg:4326')
+    N = xc.shape[0]
+    factors = [i for i in range(1, N+1) if N % i == 0]
+
+    for f in factors:
+        blocksize = N // f
+        nblocks = f
+
+        blocked_shape = (nblocks, nblocks, blocksize, blocksize)
+
+        xy_block = xy.reshape((*blocked_shape, *xy.shape[-2:]))
+        xc_block = xc.reshape(blocked_shape)
+        yc_block = yc.reshape(blocked_shape)
+
+        def actual_index(bi, bj, i, j):
+            flat_index = np.ravel_multi_index((bi, bj, i, j), blocked_shape)
+            multi_index = np.unravel_index([flat_index], (N, N))
+            return multi_index
+
+        try:
+            for bi in range(nblocks):
+                for bj in range(nblocks):
+
+                    block = np.ix_(range(bi*blocksize, (bi+1)*blocksize), range(bj*blocksize, (bj+1)*blocksize))
+
+                    xc_block = xc[block]
+                    yc_block = yc[block]
+                    xy_block = xy[block]
+
+                    center_x = xc_block[blocksize//2, blocksize//2]
+                    center_y = yc_block[blocksize//2, blocksize//2]
+
+                    local_gno = pyproj.Proj(ccrs.Gnomonic(center_y, center_x).proj4_init)
+
+                    block_xy_gno = transform_xy(xy_block, latlon, local_gno)
+                    block_gno = xy_to_polygons(block_xy_gno, error_on_bad_polygon=True)
+            return blocksize
+        except RuntimeError:
+            print(f'blocksize {blocksize} is too small')
+            crs = ccrs.Gnomonic(center_y, center_x)
+            quick_map(crs)
+            draw_polygons(block_xy_gno, crs, color='gray', linewidth=0.5)
+            plt.show()
+            pass
+    raise RuntimeError('Failed to determine the appropriate blocksize')
+
+
+
+def ciwam2(grid_in: sg.grids.CSDataBase, grid_out: sg.grids.CSDataBase):
+    # rows correspond to boxes in grid_out, columns correspond to boxes in grid_in
+    latlon = pyproj.Proj('+init=epsg:4326')
+
+    M_data = []
+    M_i = []
+    M_j = []
+
+    flat_index = lambda grid, f, i, j: f*(grid.csres**2) + i*grid.csres + j
+
+    in_blocks = [i for i in range(grid_in.csres) if i % grid_in.csres == 0]
+    out_blocks = [i for i in range(grid_out.csres) if i % grid_out.csres == 0]
+
+
+    for face_out in tqdm(range(6), desc='Output face', unit='face'):
+        minor_out_ll = get_minor_xy(grid_out.xe(face_out) % 360, grid_out.ye(face_out))
+
+        center_x = (grid_out.xe(face_out) % 360)[grid_out.csres//2, grid_out.csres//2]
+        center_y = grid_out.ye(face_out)[grid_out.csres // 2, grid_out.csres // 2]
+        laea = pyproj.Proj(
+            f'+proj=laea +lat_0={center_y} +lon_0={center_x}  +x_0=0 +y_0=0 +a=6370997 +b=6370997 +units=m +no_defs'
+        )
+        gno = pyproj.Proj(ccrs.Gnomonic(center_y, center_x).proj4_init)
+
+        minor_out_ea = transform_xy(minor_out_ll, latlon, laea)
+        minor_out_gno = transform_xy(minor_out_ll, latlon, gno)
+        minor_out = xy_to_polygons(minor_out_gno)
+
+        r_out = np.max(np.sqrt(2)*edge_length(minor_out_ll, use_central_angle=True), axis=-1)
+        xc_out = grid_out.xc(face_out)
+        yc_out = grid_out.yc(face_out)
+
+        for face_in in tqdm(range(6), desc='Input face', unit='face'):
+            minor_in_ll = get_minor_xy(grid_in.xe(face_in) % 360, grid_in.ye(face_in))
+            minor_in_ea = transform_xy(minor_in_ll, latlon, laea)
+            minor_in_gno = transform_xy(minor_in_ll, latlon, gno)
+            minor_in = xy_to_polygons(minor_in_ea, error_on_bad_polygon=False) #transform=ccrs.LambertAzimuthalEqualArea(center_x, center_y))
+
+            minor_in_indexes = p1_intersects_in_p2_extent(minor_in, minor_out, return_slices=False)
+
+            r_in = np.max(np.sqrt(2)*edge_length(minor_in_ll, use_central_angle=True), axis=-1)
+            xc_in = grid_in.xc(face_in)
+            yc_in = grid_in.yc(face_in)
+
+            for i in range(grid_out.csres):
+                for j in range(grid_out.csres):
+                    row_index = flat_index(grid_out, face_out, i, j)
+                    if len(minor_in_indexes[i, j]) > 0:
+                        map_gridbox_intersects(minor_in_ea, minor_in_indexes[i, j], minor_out_ea, (i, j), ccrs.LambertAzimuthalEqualArea(center_x, center_y))
+                    for indexes in minor_in_indexes[i, j]:
+                        col_index = flat_index(grid_in, face_in, indexes[0], indexes[1])
+
+                        gridbox_out = minor_out[i, j]
+                        gridbox_in = minor_in[indexes[0], indexes[1]]
+
+                        center_distance = central_angle(
+                            xc_in[indexes[0], indexes[1]], yc_in[indexes[0], indexes[1]],
+                            xc_out[i, j], yc_out[i, j]
+                        )
+
+                        if center_distance > r_out[i, j] + r_in[indexes[0], indexes[1]]:
+                            continue
+
+                        weight = gridbox_out.intersection(gridbox_in).area / gridbox_out.area
+
+                        if weight > 0:
+                            M_data.append(weight)
+                            M_i.append(row_index)
+                            M_j.append(col_index)
+
+    M = scipy.sparse.coo_matrix((M_data, (M_i, M_j)), shape=(6 * grid_out.csres ** 2, 6 * grid_in.csres ** 2))
+
+    # QA
+    weight_sum = M.sum(axis=1)
+
+    return M
+
 def ciwam(grid_in: sg.grids.CSDataBase, grid_out: sg.grids.CSDataBase):
     # rows correspond to boxes in grid_out, columns correspond to boxes in grid_in
     latlon = pyproj.Proj('+init=epsg:4326')
@@ -105,11 +287,6 @@ def ciwam(grid_in: sg.grids.CSDataBase, grid_out: sg.grids.CSDataBase):
 
     flat_index = lambda grid, f, i, j: f*(grid.csres**2) + i*grid.csres + j
 
-    bad_gnomonic = lambda poly: not poly.is_valid or not poly.is_simple or poly.area <= 0.0
-
-    gno_proj = lambda xe, ye: pyproj.Proj(ccrs.Gnomonic(ye[ye.shape[0]//2, ye.shape[1]//2], xe[xe.shape[0]//2, xe.shape[1]//2]).proj4_init)
-
-    # ax = quick_map()
 
     for face_out in tqdm(range(6), desc='Output face', unit='face'):
         minor_out_ll = get_minor_xy(grid_out.xe(face_out) % 360, grid_out.ye(face_out))
@@ -123,6 +300,10 @@ def ciwam(grid_in: sg.grids.CSDataBase, grid_out: sg.grids.CSDataBase):
         minor_out_ea = transform_xy(minor_out_ll, latlon, laea)
         minor_out = xy_to_polygons(minor_out_ea)
 
+        r_out = np.max(np.sqrt(2)*edge_length(minor_out_ll, use_central_angle=True), axis=-1)
+        xc_out = grid_out.xc(face_out)
+        yc_out = grid_out.yc(face_out)
+
         for face_in in tqdm(range(6), desc='Input face', unit='face'):
             minor_in_ll = get_minor_xy(grid_in.xe(face_in) % 360, grid_in.ye(face_in))
             minor_in_ea = transform_xy(minor_in_ll, latlon, laea)
@@ -130,58 +311,32 @@ def ciwam(grid_in: sg.grids.CSDataBase, grid_out: sg.grids.CSDataBase):
 
             minor_in_indexes = p1_intersects_in_p2_extent(minor_in, minor_out, return_slices=False)
 
-            gno_x = (grid_in.xe(face_in) % 360)[grid_in.csres // 2, grid_in.csres // 2]
-            gno_y = grid_in.ye(face_in)[grid_in.csres // 2, grid_in.csres // 2]
-            gno_in_crs = ccrs.Gnomonic(gno_y, gno_x)
-            gno_in = pyproj.Proj(gno_in_crs.proj4_init)
-            minor_out_gno_xy = transform_xy(minor_out_ll, latlon, gno_in)
-            minor_out_gno = xy_to_polygons(minor_out_gno_xy, error_on_bad_polygon=False)
-            minor_in_gno_xy = transform_xy(minor_in_ll, latlon, gno_in)
-            minor_in_gno = xy_to_polygons(minor_in_gno_xy, error_on_bad_polygon=False)
+            r_in = np.max(np.sqrt(2)*edge_length(minor_in_ll, use_central_angle=True), axis=-1)
+            xc_in = grid_in.xc(face_in)
+            yc_in = grid_in.yc(face_in)
 
             for i in range(grid_out.csres):
                 for j in range(grid_out.csres):
                     row_index = flat_index(grid_out, face_out, i, j)
+                    if len(minor_in_indexes[i, j]) > 0:
+                        map_gridbox_intersects(minor_in_ea, minor_in_indexes[i, j], minor_out_ea, (i, j), ccrs.LambertAzimuthalEqualArea(center_x, center_y))
                     for indexes in minor_in_indexes[i, j]:
                         col_index = flat_index(grid_in, face_in, indexes[0], indexes[1])
 
                         gridbox_out = minor_out[i, j]
                         gridbox_in = minor_in[indexes[0], indexes[1]]
 
-                        box_in = minor_in_gno[indexes[0], indexes[1]]
-                        box_out = minor_out_gno[i, j]
+                        center_distance = central_angle(
+                            xc_in[indexes[0], indexes[1]], yc_in[indexes[0], indexes[1]],
+                            xc_out[i, j], yc_out[i, j]
+                        )
+
+                        if center_distance > r_out[i, j] + r_in[indexes[0], indexes[1]]:
+                            continue
 
                         weight = gridbox_out.intersection(gridbox_in).area / gridbox_out.area
 
                         if weight > 0:
-
-                            # If input gridbox is bad in gnomonic then we must refine it's projection
-                            if bad_gnomonic(box_in) and weight > 0.1:
-                                new_gno_proj = pyproj.Proj(ccrs.Gnomonic(
-                                    grid_in.yc(face_in)[indexes[0], indexes[1]],
-                                    grid_in.xc(face_in)[indexes[0], indexes[1]]
-                                ).proj4_init)
-                                # update box_in and box_out
-                                box_in = shapely.geometry.Polygon(
-                                    transform_xy(minor_in_ll[indexes[0], indexes[1]], latlon, new_gno_proj)
-                                )
-                                box_out = shapely.geometry.Polygon(
-                                    transform_xy(minor_out_ll[i, j], latlon, new_gno_proj)
-                                )
-                                # Save back
-                                minor_out_gno[i, j] = box_out
-                                minor_in_gno[indexes[0], indexes[1]] = box_in
-
-                                if bad_gnomonic(box_in):
-                                    raise RuntimeError('Bad gnomonic projection at maxium refinement')
-
-                            # skip if box_out is bad or no intersect
-                            if bad_gnomonic(box_out) or not box_out.intersects(box_in):
-                                continue
-
-                            # if face_in == 2 and face_out == 0 and row_index == 3:
-                            #     draw_polygons(ax, minor_in_ll[indexes[0], indexes[1]], ccrs.PlateCarree(), label=f'i:{indexes[0]}, j:{indexes[1]}, weight={weight}')
-                            #     draw_polygons(ax, minor_out_ll[i, j], ccrs.PlateCarree(), color='k', label=f'i:{i}, j:{j}')
                             M_data.append(weight)
                             M_i.append(row_index)
                             M_j.append(col_index)
@@ -214,7 +369,9 @@ def quick_map(projection=ccrs.PlateCarree(), set_global=True, coastlines=True):
     return ax
 
 
-def draw_polygons(ax, polygons_xy, transform, **kwargs):
+def draw_polygons(polygons_xy, transform=ccrs.PlateCarree(), ax=None, **kwargs):
+    if ax is None:
+        ax = plt.gca()
     if len(polygons_xy.shape) == 2:
         polygons_xy = np.expand_dims(polygons_xy, 0)
 
@@ -230,7 +387,7 @@ if __name__=='__main__':
 
 
 
-    sf=12
+    sf=15
     target_lat=35
     target_lon=-55
     # target_lat = 30
@@ -240,6 +397,13 @@ if __name__=='__main__':
 
     control = sg.grids.CubeSphere(24)
     experiment = sg.grids.StretchedGrid(12, sf, target_lat, target_lon)
+
+    minor = get_minor_xy(experiment.xe(2) % 360, experiment.ye(2))
+    blocksize = determine_blocksize(minor, experiment.xc(2) % 360, experiment.yc(2))
+    print(f'blocksize is {blocksize}')
+    exit(1)
+
+    ciwam2(experiment, control)
 
     ciwam(experiment, control)
 
