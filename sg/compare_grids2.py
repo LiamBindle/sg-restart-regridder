@@ -321,87 +321,37 @@ def ciwam2(grid_in: sg.grids.CSDataBase, grid_out: sg.grids.CSDataBase):
 
     return M
 
-def ciwam(grid_in: sg.grids.CSDataBase, grid_out: sg.grids.CSDataBase):
-    # rows correspond to boxes in grid_out, columns correspond to boxes in grid_in
-    latlon = pyproj.Proj('+init=epsg:4326')
 
-    M_data = []
-    M_i = []
-    M_j = []
+def get_grid_xy(grid, face_indexes, i_indexes, j_indexes):
+    face_indexes = np.atleast_1d(face_indexes)
+    i_indexes = np.atleast_1d(i_indexes)
+    j_indexes = np.atleast_1d(j_indexes)
+    all_xy = [get_minor_xy(grid.xe(f) % 360, grid.ye(f)) for f in range(6)]
 
-    flat_index = lambda grid, f, i, j: f*(grid.csres**2) + i*grid.csres + j
+    xy = []
+    for face, i, j in zip(face_indexes, i_indexes, j_indexes):
+        xy.append(all_xy[face][i, j])
 
+    return np.array(xy)
 
-    for face_out in tqdm(range(6), desc='Output face', unit='face'):
-        minor_out_ll = get_minor_xy(grid_out.xe(face_out) % 360, grid_out.ye(face_out))
+def ravel_grid_index(grid, face, i, j):
+    return np.ravel_multi_index([face, i, j], (6, grid.csres, grid.csres))
 
-        center_x = (grid_out.xe(face_out) % 360)[grid_out.csres//2, grid_out.csres//2]
-        center_y = grid_out.ye(face_out)[grid_out.csres // 2, grid_out.csres // 2]
-        laea = pyproj.Proj(
-            f'+proj=laea +lat_0={center_y} +lon_0={center_x}  +x_0=0 +y_0=0 +a=6370997 +b=6370997 +units=m +no_defs'
-        )
+def unravel_grid_index(grid, index):
+    return np.unravel_index(index, shape=(6, grid.csres, grid.csres))
 
-        minor_out_ea = transform_xy(minor_out_ll, latlon, laea)
-        minor_out = xy_to_polygons(minor_out_ea)
-
-        r_out = np.max(np.sqrt(2)*edge_length(minor_out_ll, use_central_angle=True), axis=-1)
-        xc_out = grid_out.xc(face_out)
-        yc_out = grid_out.yc(face_out)
-
-        for face_in in tqdm(range(6), desc='Input face', unit='face'):
-            minor_in_ll = get_minor_xy(grid_in.xe(face_in) % 360, grid_in.ye(face_in))
-            minor_in_ea = transform_xy(minor_in_ll, latlon, laea)
-            minor_in = xy_to_polygons(minor_in_ea, error_on_bad_polygon=False) #transform=ccrs.LambertAzimuthalEqualArea(center_x, center_y))
-
-            minor_in_indexes = p1_intersects_in_p2_extent(minor_in, minor_out, return_slices=False)
-
-            r_in = np.max(np.sqrt(2)*edge_length(minor_in_ll, use_central_angle=True), axis=-1)
-            xc_in = grid_in.xc(face_in)
-            yc_in = grid_in.yc(face_in)
-
-            for i in range(grid_out.csres):
-                for j in range(grid_out.csres):
-                    row_index = flat_index(grid_out, face_out, i, j)
-                    if len(minor_in_indexes[i, j]) > 0:
-                        map_gridbox_intersects(minor_in_ea, minor_in_indexes[i, j], minor_out_ea, (i, j), ccrs.LambertAzimuthalEqualArea(center_x, center_y))
-                    for indexes in minor_in_indexes[i, j]:
-                        col_index = flat_index(grid_in, face_in, indexes[0], indexes[1])
-
-                        gridbox_out = minor_out[i, j]
-                        gridbox_in = minor_in[indexes[0], indexes[1]]
-
-                        center_distance = central_angle(
-                            xc_in[indexes[0], indexes[1]], yc_in[indexes[0], indexes[1]],
-                            xc_out[i, j], yc_out[i, j]
-                        )
-
-                        if center_distance > r_out[i, j] + r_in[indexes[0], indexes[1]]:
-                            continue
-
-                        weight = gridbox_out.intersection(gridbox_in).area / gridbox_out.area
-
-                        if weight > 0:
-                            M_data.append(weight)
-                            M_i.append(row_index)
-                            M_j.append(col_index)
-    # plt.legend()
-    # plt.show()
-
-    M = scipy.sparse.coo_matrix((M_data, (M_i, M_j)), shape=(6 * grid_out.csres ** 2, 6 * grid_in.csres ** 2))
-
-    # QA
-    weight_sum = M.sum(axis=1)
-
-    return M
-
-
-
-
-
-
-
-
-
+def intersecting_boxes(M, row, grid_in):
+    row = np.atleast_1d(row)
+    f_indexes = []
+    i_indexes = []
+    j_indexes = []
+    for r in row:
+        col = np.argwhere(M.getrow(r).toarray().squeeze() > 0).squeeze()
+        f, i, j = unravel_grid_index(grid_in, col)
+        f_indexes.extend(np.atleast_1d(f))
+        i_indexes.extend(np.atleast_1d(i))
+        j_indexes.extend(np.atleast_1d(j))
+    return f_indexes, i_indexes, j_indexes
 
 def quick_map(projection=ccrs.PlateCarree(), set_global=True, coastlines=True):
     plt.figure()
@@ -442,7 +392,31 @@ if __name__=='__main__':
     control = sg.grids.CubeSphere(24)
     experiment = sg.grids.StretchedGrid(12, sf, target_lat, target_lon)
 
-    M = ciwam2(experiment, control)
+    #M = ciwam2(experiment, control)
+    # scipy.sparse.save_npz('foo.npz', M)
+    # exit(1)
+
+    M = scipy.sparse.load_npz('foo.npz')
+    total_weights = M.sum(axis=-1)
+
+    row = 3454
+
+    # face, i, j = intersecting_boxes(M, row, experiment)
+    # exp_xy = get_grid_xy(experiment, face, i, j)
+    # ctl_xy = get_grid_xy(control, *unravel_grid_index(control, row))
+
+    bad = np.where(total_weights < 0.8)
+
+    f, i, j = intersecting_boxes(M, bad[0], experiment)
+
+    bad_boxes = get_grid_xy(experiment, f, i, j)
+
+    quick_map(ccrs.EqualEarth())
+    draw_polygons(bad_boxes, color='red')
+    # draw_polygons(ctl_xy, color='gray')
+    plt.show()
+
+
 
     ciwam(experiment, control)
 
