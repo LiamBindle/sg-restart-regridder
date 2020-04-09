@@ -360,9 +360,7 @@ def look_for_missing_intersections(M, grid_in, grid_out, start=0, search_dist=2,
 
     ibox_cache = {}
 
-    M_data = M.data.tolist()
-    M_i = M.row.tolist()
-    M_j = M.col.tolist()
+    new_data = {}
     for out_row in tqdm(bad[0][start:], desc='Revisiting rows', unit='row'):
         # This obox doesn't have any intersects
         of, oi, oj = unravel_grid_index(grid_out, out_row)
@@ -419,11 +417,10 @@ def look_for_missing_intersections(M, grid_in, grid_out, start=0, search_dist=2,
 
             if weight > 0:
                 col = ravel_grid_index(grid_in, *ibox_idx)
-                M_data.append(weight)
-                M_i.append(out_row)
-                M_j.append(col)
-    new_M = scipy.sparse.coo_matrix((M_data, (M_i, M_j)), shape=(6 * grid_out.csres ** 2, 6 * grid_in.csres ** 2))
-    return new_M
+                new_data.update({(out_row, col): weight})
+    M_dok = M.todok()
+    M_dok._update(new_data)
+    return M_dok.tocoo()
 
 
 def get_grid_xy(grid, face_indexes, i_indexes, j_indexes):
