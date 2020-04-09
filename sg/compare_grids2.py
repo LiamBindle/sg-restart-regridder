@@ -352,10 +352,11 @@ def revist(M, grid_in, grid_out, tol, start=0):
             M.data[index] = update
     return M
 
-def try_fix_zeros(M, grid_in, grid_out, start=0, search_dist=2):
+
+def look_for_missing_intersections(M, grid_in, grid_out, start=0, search_dist=2, tol=0.9, broadcast_dist=1):
     latlon = pyproj.Proj('+init=epsg:4326')
     total_weights = M.sum(axis=-1)
-    bad = np.where(total_weights == 0.0)
+    bad = np.where(total_weights < tol)
 
     ibox_cache = {}
 
@@ -377,8 +378,8 @@ def try_fix_zeros(M, grid_in, grid_out, start=0, search_dist=2):
         obox = shapely.geometry.Polygon(obox_ea[0])
 
         oblock = np.meshgrid(*np.ix_(
-            range(max(0, oi - search_dist), min(grid_out.csres, oi + search_dist)),
-            range(max(0, oj - search_dist), min(grid_out.csres, oj + search_dist)),
+            range(max(0, oi - search_dist), min(grid_out.csres, oi + search_dist + 1)),
+            range(max(0, oj - search_dist), min(grid_out.csres, oj + search_dist + 1)),
         ))
 
         oblock = [np.ones_like(oblock[0].flatten(), dtype=int)*of, oblock[0].flatten(), oblock[1].flatten()]
@@ -388,7 +389,18 @@ def try_fix_zeros(M, grid_in, grid_out, start=0, search_dist=2):
         for nearby_row in nearby_rows:
             nearby_intersects = [(f, i, j) for f, i, j in zip(*intersecting_boxes(M, nearby_row, grid_in))]
             for ibox_idx in nearby_intersects:
-                nearby_iboxes.add(ibox_idx)
+
+                ibox_broadcast = np.meshgrid(*np.ix_(
+                    range(max(0, ibox_idx[1] - broadcast_dist), min(grid_in.csres, ibox_idx[1] + broadcast_dist + 1)),
+                    range(max(0, ibox_idx[2] - broadcast_dist), min(grid_in.csres, ibox_idx[2] + broadcast_dist + 1)),
+                ))
+                ibox_broadcast = [
+                    np.ones_like(ibox_broadcast[0].flatten(), dtype=int) * ibox_idx[0],
+                    ibox_broadcast[0].flatten(),
+                    ibox_broadcast[1].flatten()
+                ]
+                for f, i, j in zip(*ibox_broadcast):
+                    nearby_iboxes.add((f, i, j))
 
         for ibox_idx in nearby_iboxes:
             if ibox_idx in ibox_cache:

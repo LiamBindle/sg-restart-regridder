@@ -5,7 +5,7 @@ import os.path
 import numpy as np
 import scipy.sparse
 
-from sg.compare_grids2 import ciwam2, revist, normalize
+from sg.compare_grids2 import ciwam2, revist, normalize, look_for_missing_intersections
 from sg.grids import StretchedGrid, CubeSphere
 
 
@@ -64,8 +64,7 @@ if __name__ == '__main__':
         )
 
     print('Generating sparse intersect matrix')
-    # M = ciwam2(exp_grid, ctl_grid)
-    M = scipy.sparse.load_npz(os.path.join(args['e'], 'sparse_intersect-init.npz'))
+    M = ciwam2(exp_grid, ctl_grid)
     print_matrix_stats(M, 'initial')
     init_fname = 'sparse_intersect-init.npz'
     print(f'Saving to {init_fname}\n')
@@ -73,8 +72,15 @@ if __name__ == '__main__':
 
     print('Recalculating intersects with enhanced gridbox edges')
     M = revist(M, exp_grid, ctl_grid, 0.99)
-    print_matrix_stats(M, 'post-revisit')
-    revisted_fname = 'sparse_intersect-revisited.npz'
+    print_matrix_stats(M, 'post-revisit1')
+    revisted_fname = 'sparse_intersect-revisit1.npz'
+    print(f'Saving to {revisted_fname}\n')
+    scipy.sparse.save_npz(os.path.join(args['e'], revisted_fname), M)
+
+    print('Looking for intersections that might have been missed')
+    M = look_for_missing_intersections(M, exp_grid, ctl_grid, tol=0.95)
+    print_matrix_stats(M, 'post-revisit2')
+    revisted_fname = 'sparse_intersect-revisit2.npz'
     print(f'Saving to {revisted_fname}\n')
     scipy.sparse.save_npz(os.path.join(args['e'], revisted_fname), M)
 
