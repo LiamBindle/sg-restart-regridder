@@ -78,7 +78,7 @@ if __name__ == '__main__':
     scipy.sparse.save_npz(os.path.join(args['e'], revisted_fname), M)
 
     print('Looking for intersections that might have been missed')
-    M = look_for_missing_intersections(M, exp_grid, ctl_grid, tol=0.99)
+    M = look_for_missing_intersections(M, exp_grid, ctl_grid, tol=0.98)
     print_matrix_stats(M, 'post-revisit2')
     revisted_fname = 'sparse_intersect-revisit2.npz'
     print(f'Saving to {revisted_fname}\n')
