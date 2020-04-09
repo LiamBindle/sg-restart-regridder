@@ -352,6 +352,67 @@ def revist(M, grid_in, grid_out, tol, start=0):
             M.data[index] = update
     return M
 
+def try_fix_zeros(M, grid_in, grid_out, start=0, search_dist=2):
+    latlon = pyproj.Proj('+init=epsg:4326')
+    total_weights = M.sum(axis=-1)
+    bad = np.where(total_weights == 0.0)
+
+    ibox_cache = {}
+
+    M_data = M.data.tolist()
+    M_i = M.row.tolist()
+    M_j = M.col.tolist()
+    for out_row in tqdm(bad[0][start:], desc='Revisiting rows', unit='row'):
+        # This obox doesn't have any intersects
+        of, oi, oj = unravel_grid_index(grid_out, out_row)
+        obox_ll = get_grid_xy(grid_out, of, oi, oj)
+        xc = obox_ll[0, 0, 0]
+        yc = obox_ll[0, 0, 1]
+
+        laea = pyproj.Proj(
+            f'+proj=laea +lat_0={yc} +lon_0={xc}  +x_0=0 +y_0=0 +a=6370997 +b=6370997 +units=m +no_defs'
+        )
+
+        obox_ea = transform_xy(obox_ll, latlon, laea)
+        obox = shapely.geometry.Polygon(obox_ea[0])
+
+        oblock = np.meshgrid(*np.ix_(
+            range(max(0, oi - search_dist), min(grid_out.csres, oi + search_dist)),
+            range(max(0, oj - search_dist), min(grid_out.csres, oj + search_dist)),
+        ))
+
+        oblock = [np.ones_like(oblock[0].flatten(), dtype=int)*of, oblock[0].flatten(), oblock[1].flatten()]
+        nearby_rows = ravel_grid_index(grid_out, *oblock)
+
+        nearby_iboxes = set()
+        for nearby_row in nearby_rows:
+            nearby_intersects = [(f, i, j) for f, i, j in zip(*intersecting_boxes(M, nearby_row, grid_in))]
+            for ibox_idx in nearby_intersects:
+                nearby_iboxes.add(ibox_idx)
+
+        for ibox_idx in nearby_iboxes:
+            if ibox_idx in ibox_cache:
+                continue
+            else:
+                ibox_ll = get_grid_xy(grid_in, *ibox_idx)
+                enhanced_ibox_ll = enhance_xy(ibox_ll[0])
+                ibox_cache[ibox_idx] = enhanced_ibox_ll
+
+        for ibox_idx in nearby_iboxes:
+            ibox_ll = ibox_cache[ibox_idx]
+            ibox_ea = transform_xy(ibox_ll, latlon, laea)
+            ibox = shapely.geometry.Polygon(ibox_ea)
+
+            weight = obox.intersection(ibox).area / obox.area
+
+            if weight > 0:
+                col = ravel_grid_index(grid_in, *ibox_idx)
+                M_data.append(weight)
+                M_i.append(out_row)
+                M_j.append(col)
+    new_M = scipy.sparse.coo_matrix((M_data, (M_i, M_j)), shape=(6 * grid_out.csres ** 2, 6 * grid_in.csres ** 2))
+    return new_M
+
 
 def get_grid_xy(grid, face_indexes, i_indexes, j_indexes):
     face_indexes = np.atleast_1d(face_indexes)
