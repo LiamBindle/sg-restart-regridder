@@ -63,28 +63,26 @@ if __name__ == '__main__':
             cs=exp_conf['grid']['cs_res'],
         )
 
-    # print('Generating sparse intersect matrix')
-    # M = ciwam2(exp_grid, ctl_grid)
-    # print_matrix_stats(M, 'initial')
-    # init_fname = 'sparse_intersect-init.npz'
-    # print(f'Saving to {init_fname}\n')
-    # scipy.sparse.save_npz(os.path.join(args['e'], init_fname), M)
-    #
-    # print('Recalculating intersects with enhanced gridbox edges')
-    # M = revist(M, exp_grid, ctl_grid, 0.99)
-    # print_matrix_stats(M, 'post-revisit1')
-    # revisted_fname = 'sparse_intersect-revisit1.npz'
-    # print(f'Saving to {revisted_fname}\n')
-    # scipy.sparse.save_npz(os.path.join(args['e'], revisted_fname), M)
+    print('Generating sparse intersect matrix')
+    M = ciwam2(exp_grid, ctl_grid)
+    print_matrix_stats(M, 'initial')
+    init_fname = 'sparse_intersect-init.npz'
+    print(f'Saving to {init_fname}\n')
+    scipy.sparse.save_npz(os.path.join(args['e'], init_fname), M)
 
-    # print('Looking for intersections that might have been missed')
-    # M = look_for_missing_intersections(M, exp_grid, ctl_grid, tol=0.98)
-    # print_matrix_stats(M, 'post-revisit2')
-    revisted_fname = 'sparse_intersect-revisit2.npz'
-    # print(f'Saving to {revisted_fname}\n')
-    # scipy.sparse.save_npz(os.path.join(args['e'], revisted_fname), M)
-    M = scipy.sparse.load_npz(os.path.join(args['e'], revisted_fname))
+    print('Recalculating intersects with enhanced gridbox edges')
+    M = revist(M, exp_grid, ctl_grid, 0.99)
+    print_matrix_stats(M, 'post-revisit1')
+    revisted_fname = 'sparse_intersect-revisit1.npz'
+    print(f'Saving to {revisted_fname}\n')
+    scipy.sparse.save_npz(os.path.join(args['e'], revisted_fname), M)
+
+    print('Looking for intersections that might have been missed')
+    M = look_for_missing_intersections(M, exp_grid, ctl_grid, tol=0.98)
     print_matrix_stats(M, 'post-revisit2')
+    revisted_fname = 'sparse_intersect-revisit2.npz'
+    print(f'Saving to {revisted_fname}\n')
+    scipy.sparse.save_npz(os.path.join(args['e'], revisted_fname), M)
 
     print('Normalizing rows (intersect-weighted average)')
     M = normalize(M)
