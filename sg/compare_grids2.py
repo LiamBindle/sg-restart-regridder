@@ -322,6 +322,76 @@ def ciwam2(grid_in: sg.grids.CSDataBase, grid_out: sg.grids.CSDataBase):
     return M
 
 
+def enhance_xy(xy, spacing=1.0):
+    latlon = pyproj.Proj('+init=epsg:4326')
+    edge_length = longest_edge(xy, use_central_angle=True)
+    nsegs = int(edge_length / spacing)
+    nsegs = max(nsegs, 2)
+
+    gno = pyproj.Proj(ccrs.Gnomonic(xy[0, 1], xy[0, 0]).proj4_init)
+
+    xy_gno = transform_xy(xy, latlon, gno)
+
+    x = xy_gno[:, 0]
+    y = xy_gno[:, 1]
+
+    new_xs = []
+    new_ys = []
+    for x1, x2, y1, y2 in zip(x[:-1], x[1:], y[:-1], y[1:]):
+        m = (y2 - y1) / (x2 - x1)
+        b = y1 - m*x1
+        new_x = np.linspace(x1, x2, nsegs)
+        new_y = m*new_x + b
+        new_xs.extend(new_x[:-1])
+        new_ys.extend(new_y[:-1])
+
+    new_xs.append(new_x[-1])
+    new_ys.append(new_y[-1])
+
+    xy_new = transform_xy(np.moveaxis([new_xs, new_ys], 0, -1), gno, latlon)
+    return xy_new
+
+
+
+
+
+
+def revist(M, grid_in, grid_out, tol):
+    latlon = pyproj.Proj('+init=epsg:4326')
+    total_weights = M.sum(axis=-1)
+    bad = np.where(total_weights < tol)
+
+    for out_row in tqdm(bad[0], desc='Revisiting rows', unit='row'):
+
+        of, oi, oj = unravel_grid_index(grid_out, out_row)
+        obox_ll = get_grid_xy(grid_out, of, oi, oj)
+        xc = obox_ll[0, 0, 0]
+        yc = obox_ll[0, 0, 1]
+
+        f, i, j = intersecting_boxes(M, out_row, experiment)
+        boxes_in_ll = get_grid_xy(experiment, f, i, j)
+        enhanced_boxes_in_ll = [enhance_xy(xy) for xy in boxes_in_ll]
+        laea = pyproj.Proj(
+            f'+proj=laea +lat_0={yc} +lon_0={xc}  +x_0=0 +y_0=0 +a=6370997 +b=6370997 +units=m +no_defs'
+        )
+        iboxes_ea = [transform_xy(iebox_ll, latlon, laea) for iebox_ll in enhanced_boxes_in_ll]
+        iboxes = [shapely.geometry.Polygon(xy) for xy in iboxes_ea]
+        obox_ea = transform_xy(obox_ll, latlon, laea)
+        obox = shapely.geometry.Polygon(obox_ea[0])
+
+        col = [ravel_grid_index(grid_in, fi, ii, ji) for fi, ii, ji in zip(f, i, j)]
+        row = np.ones_like(col, dtype=int) * out_row
+
+        indexes = [np.argwhere((M.row == r) & (M.col == c)).item() for r, c in zip(row, col)]
+
+        updated_intersects = [obox.intersection(ibox).area / obox.area for ibox in iboxes]
+
+        for index, update in zip(indexes, updated_intersects):
+            M.data[index] = update
+    return M
+
+
+
 def get_grid_xy(grid, face_indexes, i_indexes, j_indexes):
     face_indexes = np.atleast_1d(face_indexes)
     i_indexes = np.atleast_1d(i_indexes)
@@ -375,6 +445,10 @@ def draw_polygons(polygons_xy, transform=ccrs.PlateCarree(), ax=None, **kwargs):
         ax.plot(polygon_xy[:, 0], polygon_xy[:, 1], transform=transform, **kwargs)
 
 
+# def normalize(M):
+#     for row in range(M.shape[0]):
+
+
 if __name__=='__main__':
     import matplotlib.pyplot as plt
     import sys
@@ -396,52 +470,60 @@ if __name__=='__main__':
     # scipy.sparse.save_npz('foo.npz', M)
     # exit(1)
 
-    M = scipy.sparse.load_npz('foo.npz')
+    M = scipy.sparse.load_npz('foo2.npz')
+    # total_weights = M.sum(axis=-1)
+    # print(f'Before revisit total_weight.mean() = {total_weights.mean()}')
+    #
+    # M2 = revist(M, experiment, control, 0.98)
+    # scipy.sparse.save_npz('foo2.npz', M)
     total_weights = M.sum(axis=-1)
 
-    row = 3454
+    # print(f'After revisit total_weight.mean() = {total_weights.mean()}')
+    # print(f'              total_weight.max() = {total_weights.max()}')
+    # print(f'              total_weight.min() = {total_weights.min()}')
 
-    # face, i, j = intersecting_boxes(M, row, experiment)
+    row = 3087
+    # f, i, j = intersecting_boxes(M, row, experiment)
     # exp_xy = get_grid_xy(experiment, face, i, j)
-    # ctl_xy = get_grid_xy(control, *unravel_grid_index(control, row))
+    ctl_xy = get_grid_xy(control, *unravel_grid_index(control, row))
 
-    bad = np.where(total_weights < 0.8)
+    # bad = np.where(total_weights < 0.8)
+    # print(len(bad[0]))
+    # f, i, j = intersecting_boxes(M2, bad[0], experiment)
 
-    f, i, j = intersecting_boxes(M, bad[0], experiment)
-
-    bad_boxes = get_grid_xy(experiment, f, i, j)
+    # bad_boxes = get_grid_xy(experiment, f, i, j)
 
     quick_map(ccrs.EqualEarth())
-    draw_polygons(bad_boxes, color='red')
-    # draw_polygons(ctl_xy, color='gray')
+    # draw_polygons(bad_boxes, color='red')
+    draw_polygons(ctl_xy, color='red')
     plt.show()
-
-
-
-    ciwam(experiment, control)
-
-    minor = get_minor_xy(experiment.xe(5) % 360, experiment.ye(5))
-
-    minor_exp_xy = minor
-    minor_exp = xy_to_polygons(minor_exp_xy)
-    minor_ctl_xy = get_minor_xy(control.xe(4) % 360, control.ye(4))
-    minor_ctl = xy_to_polygons(minor_ctl_xy)
-
-    p1_intersects = p1_intersects_in_p2_extent(minor_exp, minor_ctl)
-
-
-    latlon = pyproj.Proj('+init=epsg:4326')
-    laea = pyproj.Proj('+proj=laea +lat_0=-90 +lon_0=0  +x_0=0 +y_0=0 +a=6370997 +b=6370997 +units=m +no_defs')
-
-    #foo = longest_dxdy(ctl_minor)
-
-    gno_ccrs = ccrs.Gnomonic(30, -70)
-
-    gno = pyproj.Proj(gno_ccrs.proj4_init)
-
-    minor_gno = transform_xy(minor, latlon, gno)
-
-    ax = quick_map(projection=ccrs.PlateCarree())
-    draw_polygons(ax, minor_ctl_xy[22,0], ccrs.PlateCarree(), color='k')
-    draw_polygons(ax, minor_exp_xy[p1_intersects[22,0]], ccrs.PlateCarree(), color='red')
-    plt.show()
+    #
+    #
+    #
+    # ciwam(experiment, control)
+    #
+    # minor = get_minor_xy(experiment.xe(5) % 360, experiment.ye(5))
+    #
+    # minor_exp_xy = minor
+    # minor_exp = xy_to_polygons(minor_exp_xy)
+    # minor_ctl_xy = get_minor_xy(control.xe(4) % 360, control.ye(4))
+    # minor_ctl = xy_to_polygons(minor_ctl_xy)
+    #
+    # p1_intersects = p1_intersects_in_p2_extent(minor_exp, minor_ctl)
+    #
+    #
+    # latlon = pyproj.Proj('+init=epsg:4326')
+    # laea = pyproj.Proj('+proj=laea +lat_0=-90 +lon_0=0  +x_0=0 +y_0=0 +a=6370997 +b=6370997 +units=m +no_defs')
+    #
+    # #foo = longest_dxdy(ctl_minor)
+    #
+    # gno_ccrs = ccrs.Gnomonic(30, -70)
+    #
+    # gno = pyproj.Proj(gno_ccrs.proj4_init)
+    #
+    # minor_gno = transform_xy(minor, latlon, gno)
+    #
+    # ax = quick_map(projection=ccrs.PlateCarree())
+    # draw_polygons(ax, minor_ctl_xy[22,0], ccrs.PlateCarree(), color='k')
+    # draw_polygons(ax, minor_exp_xy[p1_intersects[22,0]], ccrs.PlateCarree(), color='red')
+    # plt.show()
