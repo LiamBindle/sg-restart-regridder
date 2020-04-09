@@ -6,7 +6,9 @@ import scipy.spatial
 import pyproj
 import shapely.strtree
 import scipy.sparse
+import shapely.errors
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 import sg.grids
 
@@ -292,10 +294,14 @@ def enhance_xy(xy, spacing=1.0):
     new_xs = []
     new_ys = []
     for x1, x2, y1, y2 in zip(x[:-1], x[1:], y[:-1], y[1:]):
-        m = (y2 - y1) / (x2 - x1)
-        b = y1 - m*x1
-        new_x = np.linspace(x1, x2, nsegs)
-        new_y = m*new_x + b
+        if abs(x2-x1) < 1e-6:
+            new_x = np.linspace(x1, x2, nsegs)
+            new_y = np.linspace(y1, y2, nsegs)
+        else:
+            m = (y2 - y1) / (x2 - x1)
+            b = y1 - m*x1
+            new_x = np.linspace(x1, x2, nsegs)
+            new_y = m*new_x + b
         new_xs.extend(new_x[:-1])
         new_ys.extend(new_y[:-1])
 
@@ -305,21 +311,27 @@ def enhance_xy(xy, spacing=1.0):
     xy_new = transform_xy(np.moveaxis([new_xs, new_ys], 0, -1), gno, latlon)
     return xy_new
 
+def quick_map_polygons(transform, red_boxes, gray_boxes):
+    quick_map(transform)
+    for p in red_boxes:
+        draw_polygons(p, transform, color='red', linewidth=0.5)
+    for p in gray_boxes:
+        draw_polygons(p, transform, color='gray', linewidth=0.5)
 
-def revist(M, grid_in, grid_out, tol):
+def revist(M, grid_in, grid_out, tol, start=0):
     latlon = pyproj.Proj('+init=epsg:4326')
     total_weights = M.sum(axis=-1)
     bad = np.where(total_weights < tol)
 
-    for out_row in tqdm(bad[0], desc='Revisiting rows', unit='row'):
+    for out_row in tqdm(bad[0][start:], desc='Revisiting rows', unit='row'):
 
         of, oi, oj = unravel_grid_index(grid_out, out_row)
         obox_ll = get_grid_xy(grid_out, of, oi, oj)
         xc = obox_ll[0, 0, 0]
         yc = obox_ll[0, 0, 1]
 
-        f, i, j = intersecting_boxes(M, out_row, experiment)
-        boxes_in_ll = get_grid_xy(experiment, f, i, j)
+        f, i, j = intersecting_boxes(M, out_row, grid_in)
+        boxes_in_ll = get_grid_xy(grid_in, f, i, j)
         enhanced_boxes_in_ll = [enhance_xy(xy) for xy in boxes_in_ll]
         laea = pyproj.Proj(
             f'+proj=laea +lat_0={yc} +lon_0={xc}  +x_0=0 +y_0=0 +a=6370997 +b=6370997 +units=m +no_defs'
@@ -406,7 +418,6 @@ def normalize(M):
 
 
 if __name__=='__main__':
-    import matplotlib.pyplot as plt
     import sys
 
 
@@ -423,7 +434,7 @@ if __name__=='__main__':
     experiment = sg.grids.StretchedGrid(48, sf, target_lat, target_lon)
 
     # M = ciwam2(experiment, control)
-    M = scipy.sparse.load_npz('foo-new.npz')
+    M = scipy.sparse.load_npz('foo2.npz')
     total_weights = M.sum(axis=-1)
     print('Weightings:')
     print(f' mean   : {total_weights.mean()}')
