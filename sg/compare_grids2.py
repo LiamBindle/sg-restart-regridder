@@ -5,6 +5,8 @@ import cartopy.crs as ccrs
 import scipy.spatial
 import pyproj
 import shapely.strtree
+import scipy.sparse
+from tqdm import tqdm
 
 import sg.grids
 
@@ -36,6 +38,7 @@ def edge_length(xy, use_central_angle=False):
         diff = np.diff(xy, axis=-2)
     return diff
 
+
 def longest_edge(xy, use_central_angle=False):
     if use_central_angle:
         diff = central_angle(xy[..., :-1, 0], xy[..., :-1, 1], xy[..., 1:, 0], xy[..., 1:, 1])
@@ -61,14 +64,12 @@ def xy_to_polygons(xy, transform=None, error_on_bad_polygon=True, only_valid=Fal
     stacked = np.product(xy.shape[:-2])
     xy = np.reshape(xy, (stacked, *xy.shape[-2:]))
     indexes = np.reshape(indexes, (stacked, len(xy.shape[-2:])))
-    # polygons = np.ndarray((stacked,), dtype=object)
     polygons = []
     bad = []
     zero_area = []
     index_lut = {}
     for i, (polygon_xy, index) in enumerate(zip(xy, indexes)):
         polygon = shapely.geometry.Polygon(polygon_xy)
-        # polygons[i] = shapely.geometry.Polygon(polygon_xy)
 
         is_bad = False
         if np.count_nonzero(np.isnan(polygon_xy)) > 0:
@@ -136,9 +137,6 @@ def p1_intersects_in_p2_extent(p1: np.ndarray, p2: np.ndarray, return_slices=Tru
 
     return p1_intersects.reshape(p2.shape)
 
-import scipy.sparse
-from tqdm import tqdm
-
 
 def map_gridbox_intersects(xy_in, xy_in_matches, xy_out, xy_out_ij, transform):
     ax = quick_map(transform)
@@ -147,29 +145,6 @@ def map_gridbox_intersects(xy_in, xy_in_matches, xy_out, xy_out_ij, transform):
         draw_polygons(ax, xy_in[match[0], match[1]], transform=transform, color='red')
     plt.title(xy_out_ij)
     plt.show()
-
-
-def colocated_centers(xc1, yc1, xc2, yc2, dist_tol_abs):
-    indexes1 = np.array([ar.flatten() for ar in np.meshgrid(*[np.arange(s) for s in xc1.shape], indexing='ij')])
-    indexes2 = np.array([ar.flatten() for ar in np.meshgrid(*[np.arange(s) for s in xc2.shape], indexing='ij')])
-    data1 = np.moveaxis([xc1.flatten(), yc1.flatten()], 0, -1)
-    data2 = np.moveaxis([xc2.flatten(), yc2.flatten()], 0, -1)
-    kdtree1 = scipy.spatial.KDTree(data1)
-    kdtree2 = scipy.spatial.KDTree(data2)
-    nearby = kdtree1.query_ball_tree(kdtree2, dist_tol_abs)
-
-    # nearby is list of indexes in 2 for each in 1
-    co1 = []
-    co2 = []
-    for i, neighbors in enumerate(nearby):
-        for neighbor in neighbors:
-            co1.append(indexes1[:,i])
-            co2.append(indexes2[:,neighbor])
-
-    # Put into format that can index original arrays
-    co1 = tuple([idx_list for idx_list in np.moveaxis(np.array(co1), 0, -1)])
-    co2 = tuple([idx_list for idx_list in np.moveaxis(np.array(co2), 0, -1)])
-    return co1, co2
 
 
 def determine_blocksize(xy, xc, yc):
@@ -182,15 +157,6 @@ def determine_blocksize(xy, xc, yc):
         nblocks = f
 
         blocked_shape = (nblocks, nblocks, blocksize, blocksize)
-
-        xy_block = xy.reshape((*blocked_shape, *xy.shape[-2:]))
-        xc_block = xc.reshape(blocked_shape)
-        yc_block = yc.reshape(blocked_shape)
-
-        def actual_index(bi, bj, i, j):
-            flat_index = np.ravel_multi_index((bi, bj, i, j), blocked_shape)
-            multi_index = np.unravel_index([flat_index], (N, N))
-            return multi_index
 
         try:
             for bi in range(nblocks):
@@ -208,14 +174,9 @@ def determine_blocksize(xy, xc, yc):
                     local_gno = pyproj.Proj(ccrs.Gnomonic(center_y, center_x).proj4_init)
 
                     block_xy_gno = transform_xy(xy_block, latlon, local_gno)
-                    block_gno = xy_to_polygons(block_xy_gno, error_on_bad_polygon=True)
+                    _ = xy_to_polygons(block_xy_gno, error_on_bad_polygon=True)
             return blocksize
         except RuntimeError:
-            # print(f'blocksize {blocksize} is too small')
-            # crs = ccrs.Gnomonic(center_y, center_x)
-            # quick_map(crs)
-            # draw_polygons(block_xy_gno, crs, color='gray', linewidth=0.5)
-            # plt.show()
             pass
     raise RuntimeError('Failed to determine the appropriate blocksize')
 
@@ -228,9 +189,6 @@ def ciwam2(grid_in: sg.grids.CSDataBase, grid_out: sg.grids.CSDataBase):
     M_data = []
     M_i = []
     M_j = []
-
-    flat_index = lambda grid, f, i, j: f*(grid.csres**2) + i*grid.csres + j
-
 
     for face_in in tqdm(range(6), desc='Input face', unit='face'):
         minor_in_ll = get_minor_xy(grid_in.xe(face_in) % 360, grid_in.ye(face_in))
@@ -315,10 +273,6 @@ def ciwam2(grid_in: sg.grids.CSDataBase, grid_out: sg.grids.CSDataBase):
                                 M_j.append(col_index)
 
     M = scipy.sparse.coo_matrix((M_data, (M_i, M_j)), shape=(6 * grid_out.csres ** 2, 6 * grid_in.csres ** 2))
-
-    # QA
-    weight_sum = M.sum(axis=1)
-
     return M
 
 
@@ -350,10 +304,6 @@ def enhance_xy(xy, spacing=1.0):
 
     xy_new = transform_xy(np.moveaxis([new_xs, new_ys], 0, -1), gno, latlon)
     return xy_new
-
-
-
-
 
 
 def revist(M, grid_in, grid_out, tol):
@@ -391,7 +341,6 @@ def revist(M, grid_in, grid_out, tol):
     return M
 
 
-
 def get_grid_xy(grid, face_indexes, i_indexes, j_indexes):
     face_indexes = np.atleast_1d(face_indexes)
     i_indexes = np.atleast_1d(i_indexes)
@@ -404,11 +353,14 @@ def get_grid_xy(grid, face_indexes, i_indexes, j_indexes):
 
     return np.array(xy)
 
+
 def ravel_grid_index(grid, face, i, j):
     return np.ravel_multi_index([face, i, j], (6, grid.csres, grid.csres))
 
+
 def unravel_grid_index(grid, index):
     return np.unravel_index(index, shape=(6, grid.csres, grid.csres))
+
 
 def intersecting_boxes(M, row, grid_in):
     row = np.atleast_1d(row)
@@ -422,6 +374,7 @@ def intersecting_boxes(M, row, grid_in):
         i_indexes.extend(np.atleast_1d(i))
         j_indexes.extend(np.atleast_1d(j))
     return f_indexes, i_indexes, j_indexes
+
 
 def quick_map(projection=ccrs.PlateCarree(), set_global=True, coastlines=True):
     plt.figure()
@@ -445,8 +398,11 @@ def draw_polygons(polygons_xy, transform=ccrs.PlateCarree(), ax=None, **kwargs):
         ax.plot(polygon_xy[:, 0], polygon_xy[:, 1], transform=transform, **kwargs)
 
 
-# def normalize(M):
-#     for row in range(M.shape[0]):
+def normalize(M):
+    for row in tqdm(range(M.shape[0]), desc='Normalizing rows', unit='row'):
+        row_sum = M.getrow(row).sum().item()
+        M.data[np.argwhere(M.row == row)] /= row_sum
+    return M
 
 
 if __name__=='__main__':
@@ -455,22 +411,39 @@ if __name__=='__main__':
 
 
 
-    sf=8
+    sf=2
     target_lat=35
     target_lon=-55
     # target_lat = 30
     # target_lon = -75
-    dist_tol_abs=20e3
-    area_tol_rel=0.4
+    # dist_tol_abs=20e3
+    # area_tol_rel=0.4
 
-    control = sg.grids.CubeSphere(24)
-    experiment = sg.grids.StretchedGrid(12, sf, target_lat, target_lon)
+    control = sg.grids.CubeSphere(90)
+    experiment = sg.grids.StretchedGrid(48, sf, target_lat, target_lon)
 
-    #M = ciwam2(experiment, control)
-    # scipy.sparse.save_npz('foo.npz', M)
+    # M = ciwam2(experiment, control)
+    M = scipy.sparse.load_npz('foo-new.npz')
+    total_weights = M.sum(axis=-1)
+    print('Weightings:')
+    print(f' mean   : {total_weights.mean()}')
+    print(f' # >1.02: {np.count_nonzero(total_weights > 1.02)}/{total_weights.size}')
+    print(f' # <0.98: {np.count_nonzero(total_weights < 0.98)}/{total_weights.size}')
+    print(f' # zero : {np.count_nonzero(total_weights == 0)}')
+
+    M = normalize(M)
+    total_weights = M.sum(axis=-1)
+
+    print('Weightings (post-normalize):')
+    print(f' mean   : {total_weights.mean()}')
+    print(f' # >1.02: {np.count_nonzero(total_weights > 1.02)}/{total_weights.size}')
+    print(f' # <0.98: {np.count_nonzero(total_weights < 0.98)}/{total_weights.size}')
+    print(f' # zero : {np.count_nonzero(total_weights == 0)}')
+
+    scipy.sparse.save_npz('foo-new.npz', M)
     # exit(1)
 
-    M = scipy.sparse.load_npz('foo2.npz')
+    # M = scipy.sparse.load_npz('foo-new.npz')
     # total_weights = M.sum(axis=-1)
     # print(f'Before revisit total_weight.mean() = {total_weights.mean()}')
     #
