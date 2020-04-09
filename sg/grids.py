@@ -11,6 +11,10 @@ from sg.transform import make_grid_SCS
 from gcpy.grid.horiz import make_grid_CS
 
 class CSDataBase:
+    @property
+    def csres(self) -> int:
+        return self.cs
+
     def xc(self, face) -> np.ndarray:
         return self._csgrid_list[face]['lon']
 
@@ -54,6 +58,7 @@ class CSDataBase:
 class CubeSphere(CSDataBase):
     def __init__(self, cs):
         _, self._csgrid_list = make_grid_CS(cs)
+        self.cs = cs
         #self._make_rings()
 
 
