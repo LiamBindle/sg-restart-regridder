@@ -47,6 +47,7 @@ if __name__ == '__main__':
     da = da.drop(['lats', 'lons'])
 
     ds_out = xr.Dataset({'distance_from_target': da})
+    ds_out = ds_out.drop(['nf', 'Ydim', 'Xdim'])
     encoding = {k: {'dtype': np.float32, 'complevel': 9, 'zlib': True} for k in ds_out.data_vars}
     ds_out.to_netcdf(args['o'], encoding=encoding)
 
