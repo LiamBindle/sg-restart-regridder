@@ -3,6 +3,7 @@ import argparse
 import numpy as np
 import scipy.sparse
 import xarray as xr
+from dask.diagnostics import ProgressBar
 
 def ufunc_multiply(x, M):
     y = M @ x
@@ -58,33 +59,42 @@ if __name__ == '__main__':
         vectorize=True
     )
     ds2 = ds2.unstack('oboxes')
-    ds2.to_netcdf(args['o'])
 
-    import sg.pcolormesh2
-    import matplotlib.pyplot as plt
-    from sg.compare_grids2 import determine_blocksize, get_minor_xy
-    from sg.grids import CubeSphere
-    import cartopy.crs as ccrs
+    ds2 = ds2.rename({'nf_out': 'nf', 'Ydim_out': 'Ydim', 'Xdim_out': 'Xdim'})
 
-    print('Making grid')
-    grid = CubeSphere(180)
+    encoding = {k: {'dtype': np.float32, 'complevel': 9, 'zlib': True} for k in ds2.data_vars}
+    delayed_obj = ds2.to_netcdf(args['o'], encoding=encoding, compute=False)
+    with ProgressBar():
+        delayed_obj.compute()
 
-    ax = plt.axes(projection=ccrs.EqualEarth())
-    ax.coastlines()
-    ax.set_global()
-
-    da = ds2.NOx.isel(lev=0).squeeze()
-    norm = plt.Normalize(0, da.quantile(0.95))
-    for i in range(6):
-        print(f'Plotting face {i}')
-        xy = get_minor_xy(grid.xe(i) % 360, grid.ye(i))
-        blocksize = determine_blocksize(xy, grid.xc(i) % 360, grid.yc(i))
-
-        sg.pcolormesh2.pcolormesh2(grid.xe(i), grid.ye(i), da.isel(nf_out=i).transpose('Ydim_out', 'Xdim_out').data, blocksize, norm)
-    # sg.pcolormesh2.draw_major_grid_boxes_naive(plt.gca(), grid.xe(0), grid.ye(0))
-    # sg.pcolormesh2.draw_major_grid_boxes_naive(plt.gca(), grid.xe(1), grid.ye(1))
-    # sg.pcolormesh2.draw_major_grid_boxes_naive(plt.gca(), grid.xe(3), grid.ye(3))
-    # sg.pcolormesh2.draw_major_grid_boxes_naive(plt.gca(), grid.xe(4), grid.ye(4))
-    plt.tight_layout()
-    print('Saving figure')
-    plt.savefig('foo-good.png', dpi=300)
+    # ds2 = xr.open_dataset('/extra-space/temp/CTL/NOx-CTL.nc')
+    # import sg.pcolormesh2
+    # import matplotlib.pyplot as plt
+    # from sg.compare_grids2 import determine_blocksize, get_minor_xy
+    # from sg.grids import CubeSphere
+    # import cartopy.crs as ccrs
+    #
+    # print('Making grid')
+    # grid = CubeSphere(180)
+    #
+    # ax = plt.axes(projection=ccrs.EqualEarth())
+    # ax.coastlines()
+    # ax.set_global()
+    #
+    # da = ds2.NOx.isel(lev=0).squeeze()
+    # norm = plt.Normalize(0, da.quantile(0.95))
+    # for i in range(6):
+    #     print(f'Plotting face {i}')
+    #     xy = get_minor_xy(grid.xe(i) % 360, grid.ye(i))
+    #     blocksize = determine_blocksize(xy, grid.xc(i) % 360, grid.yc(i))
+    #
+    #     #sg.pcolormesh2.pcolormesh2(grid.xe(i), grid.ye(i), da.isel(nf_out=i).transpose('Ydim_out', 'Xdim_out').data, blocksize, norm)
+    #     sg.pcolormesh2.pcolormesh2(grid.xe(i), grid.ye(i), da.isel(nf=i).data,
+    #                                blocksize, norm)
+    # # sg.pcolormesh2.draw_major_grid_boxes_naive(plt.gca(), grid.xe(0), grid.ye(0))
+    # # sg.pcolormesh2.draw_major_grid_boxes_naive(plt.gca(), grid.xe(1), grid.ye(1))
+    # # sg.pcolormesh2.draw_major_grid_boxes_naive(plt.gca(), grid.xe(3), grid.ye(3))
+    # # sg.pcolormesh2.draw_major_grid_boxes_naive(plt.gca(), grid.xe(4), grid.ye(4))
+    # plt.tight_layout()
+    # print('Saving figure')
+    # plt.savefig('foo-ctl.png', dpi=300)
