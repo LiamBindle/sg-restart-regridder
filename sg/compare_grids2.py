@@ -406,8 +406,8 @@ def look_for_missing_intersections(M, grid_in, grid_out, start=0, search_dist=2,
                 continue
             else:
                 center = (
-                    grid_in.xc(ibox_idx[0][ibox_idx[1], ibox_idx[2]]) % 360,
-                    grid_in.yc(ibox_idx[0][ibox_idx[1], ibox_idx[2]])
+                    grid_in.xc(ibox_idx[0])[ibox_idx[1], ibox_idx[2]] % 360,
+                    grid_in.yc(ibox_idx[0])[ibox_idx[1], ibox_idx[2]]
                 )
                 ibox_ll = get_grid_xy(grid_in, *ibox_idx)
                 enhanced_ibox_ll = enhance_xy(ibox_ll[0], *center)
@@ -417,6 +417,10 @@ def look_for_missing_intersections(M, grid_in, grid_out, start=0, search_dist=2,
             ibox_ll = ibox_cache[ibox_idx]
             ibox_ea = transform_xy(ibox_ll, latlon, laea)
             ibox = shapely.geometry.Polygon(ibox_ea)
+
+            if not ibox.is_valid or np.count_nonzero(~np.isfinite(ibox_ea)) > 0:
+                # some iboxes might be invalid because projection isn't valid over extent
+                continue
 
             weight = obox.intersection(ibox).area / obox.area
 

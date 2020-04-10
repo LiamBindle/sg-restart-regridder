@@ -78,12 +78,18 @@ if __name__ == '__main__':
         print(f'Saving to {init_fname}\n')
         scipy.sparse.save_npz(init_path, M)
 
-    print('Recalculating intersects with enhanced gridbox edges')
-    M = revist(M, exp_grid, ctl_grid, 0.99)
-    print_matrix_stats(M, 'post-revisit1')
     revisted_fname = 'sparse_intersect-revisit1.npz'
-    print(f'Saving to {revisted_fname}\n')
-    scipy.sparse.save_npz(os.path.join(args['e'], revisted_fname), M)
+    revisted_path = os.path.join(args['e'], revisted_fname)
+    if os.path.exists(revisted_path):
+        print(f'Loading {revisted_path}')
+        M = scipy.sparse.load_npz(revisted_path)
+        print_matrix_stats(M, 'post-revisit1')
+    else:
+        print('Recalculating intersects with enhanced gridbox edges')
+        M = revist(M, exp_grid, ctl_grid, 0.99)
+        print_matrix_stats(M, 'post-revisit1')
+        print(f'Saving to {revisted_fname}\n')
+        scipy.sparse.save_npz(revisted_path, M)
 
     print('Looking for intersections that might have been missed')
     M = look_for_missing_intersections(M, exp_grid, ctl_grid, tol=0.98)
