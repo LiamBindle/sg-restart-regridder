@@ -278,13 +278,13 @@ def ciwam2(grid_in: sg.grids.CSDataBase, grid_out: sg.grids.CSDataBase):
     return M
 
 
-def enhance_xy(xy, spacing=1.0):
+def enhance_xy(xy, xc, yc, spacing=1.0):
     latlon = pyproj.Proj('+init=epsg:4326')
     edge_length = longest_edge(xy, use_central_angle=True)
     nsegs = int(edge_length / spacing)
     nsegs = max(nsegs, 2)
 
-    gno = pyproj.Proj(ccrs.Gnomonic(xy[0, 1], xy[0, 0]).proj4_init)
+    gno = pyproj.Proj(ccrs.Gnomonic(yc, xc).proj4_init)
 
     xy_gno = transform_xy(xy, latlon, gno)
 
@@ -305,8 +305,8 @@ def enhance_xy(xy, spacing=1.0):
         new_xs.extend(new_x[:-1])
         new_ys.extend(new_y[:-1])
 
-    new_xs.append(new_x[-1])
-    new_ys.append(new_y[-1])
+    # new_xs.append(new_x[-1]) # removed because it was causing invalid boxes for high stretch factors (?)
+    # new_ys.append(new_y[-1])
 
     xy_new = transform_xy(np.moveaxis([new_xs, new_ys], 0, -1), gno, latlon)
     return xy_new
@@ -332,7 +332,8 @@ def revist(M, grid_in, grid_out, tol, start=0):
 
         f, i, j = intersecting_boxes(M, out_row, grid_in)
         boxes_in_ll = get_grid_xy(grid_in, f, i, j)
-        enhanced_boxes_in_ll = [enhance_xy(xy) for xy in boxes_in_ll]
+        box_centers = [(grid_in.xc(f_in)[i_in, j_in] % 360, grid_in.yc(f_in)[i_in, j_in]) for f_in, i_in, j_in in zip(f, i, j)]
+        enhanced_boxes_in_ll = [enhance_xy(xy, *center) for xy, center in zip(boxes_in_ll, box_centers)]
         laea = pyproj.Proj(
             f'+proj=laea +lat_0={yc} +lon_0={xc}  +x_0=0 +y_0=0 +a=6370997 +b=6370997 +units=m +no_defs'
         )
@@ -404,8 +405,12 @@ def look_for_missing_intersections(M, grid_in, grid_out, start=0, search_dist=2,
             if ibox_idx in ibox_cache:
                 continue
             else:
+                center = (
+                    grid_in.xc(ibox_idx[0][ibox_idx[1], ibox_idx[2]]) % 360,
+                    grid_in.yc(ibox_idx[0][ibox_idx[1], ibox_idx[2]])
+                )
                 ibox_ll = get_grid_xy(grid_in, *ibox_idx)
-                enhanced_ibox_ll = enhance_xy(ibox_ll[0])
+                enhanced_ibox_ll = enhance_xy(ibox_ll[0], *center)
                 ibox_cache[ibox_idx] = enhanced_ibox_ll
 
         for ibox_idx in nearby_iboxes:

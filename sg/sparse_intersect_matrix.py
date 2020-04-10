@@ -33,6 +33,8 @@ if __name__ == '__main__':
                         type=str,
                         required=True,
                         help='path to the experiment run directory')
+    parser.add_argument('-f', action='store_true',
+                        help='force all stages')
     args = vars(parser.parse_args())
 
     with open(os.path.join(args['c'], 'conf.yml'), 'r') as f:
@@ -63,12 +65,18 @@ if __name__ == '__main__':
             cs=exp_conf['grid']['cs_res'],
         )
 
-    print('Generating sparse intersect matrix')
-    M = ciwam2(exp_grid, ctl_grid)
-    print_matrix_stats(M, 'initial')
     init_fname = 'sparse_intersect-init.npz'
-    print(f'Saving to {init_fname}\n')
-    scipy.sparse.save_npz(os.path.join(args['e'], init_fname), M)
+    init_path = os.path.join(args['e'], init_fname)
+    if os.path.exists(init_path) and not args['f']:
+        print(f'Loading {init_path}')
+        M = scipy.sparse.load_npz(init_path)
+        print_matrix_stats(M, 'initial')
+    else:
+        print('Generating sparse intersect matrix')
+        M = ciwam2(exp_grid, ctl_grid)
+        print_matrix_stats(M, 'initial')
+        print(f'Saving to {init_fname}\n')
+        scipy.sparse.save_npz(init_path, M)
 
     print('Recalculating intersects with enhanced gridbox edges')
     M = revist(M, exp_grid, ctl_grid, 0.99)
