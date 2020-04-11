@@ -78,25 +78,47 @@ if __name__ == '__main__':
         print(f'Saving to {init_fname}\n')
         scipy.sparse.save_npz(init_path, M)
 
-    revisted_fname = 'sparse_intersect-revisit1.npz'
-    revisted_path = os.path.join(args['e'], revisted_fname)
-    if os.path.exists(revisted_path):
-        print(f'Loading {revisted_path}')
-        M = scipy.sparse.load_npz(revisted_path)
+    revisited_fname = 'sparse_intersect-revisit1.npz'
+    revisited_path = os.path.join(args['e'], revisited_fname)
+    if os.path.exists(revisited_path):
+        print(f'Loading {revisited_path}')
+        M = scipy.sparse.load_npz(revisited_path)
         print_matrix_stats(M, 'post-revisit1')
     else:
         print('Recalculating intersects with enhanced gridbox edges')
         M = revist(M, exp_grid, ctl_grid, 0.99)
         print_matrix_stats(M, 'post-revisit1')
-        print(f'Saving to {revisted_fname}\n')
-        scipy.sparse.save_npz(revisted_path, M)
+        print(f'Saving to {revisited_fname}\n')
+        scipy.sparse.save_npz(revisited_path, M)
 
-    print('Looking for intersections that might have been missed')
-    M = look_for_missing_intersections(M, exp_grid, ctl_grid, tol=0.98)
-    print_matrix_stats(M, 'post-revisit2')
-    revisted_fname = 'sparse_intersect-revisit2.npz'
-    print(f'Saving to {revisted_fname}\n')
-    scipy.sparse.save_npz(os.path.join(args['e'], revisted_fname), M)
+    revisited_fname = 'sparse_intersect-revisit2.npz'
+    revisited_path = os.path.join(args['e'], revisited_fname)
+    if os.path.exists(revisited_path):
+        print(f'Loading {revisited_path}')
+        M = scipy.sparse.load_npz(revisited_path)
+        print_matrix_stats(M, 'post-revisit2')
+    else:
+        print('Looking for intersections that might have been missed')
+        M = look_for_missing_intersections(M, exp_grid, ctl_grid, tol=0.98)
+        print_matrix_stats(M, 'post-revisit2')
+        print(f'Saving to {revisited_fname}\n')
+        scipy.sparse.save_npz(revisited_path, M)
+
+    count_zeros = lambda mat: np.count_nonzero(mat.sum(axis=1) == 0.0)
+
+    if count_zeros(M) > 0:
+        for search_dist in [5, 10, 20]:
+            print(f'Looking for intersections that might have been missed (search distance: {search_dist})')
+            M = look_for_missing_intersections(M, exp_grid, ctl_grid, tol=0.98, search_dist=search_dist)
+            print_matrix_stats(M, 'post-revisit2')
+            revisited_fname = 'sparse_intersect-revisit2.npz'
+            print(f'Saving to {revisited_fname}\n')
+            scipy.sparse.save_npz(os.path.join(args['e'], revisited_fname), M)
+            if count_zeros(M) == 0:
+                break
+
+        if count_zeros(M) > 0:
+            raise RuntimeError('Zero-rows still remain in the matrix')
 
     print('Normalizing rows (intersect-weighted average)')
     M = normalize(M)
