@@ -27,9 +27,6 @@ if __name__ == '__main__':
                         help='name of output')
     args = vars(parser.parse_args())
 
-    DEG2RAD = np.pi/180
-    R_EARTH=6378.1e3
-
     ds = xr.open_dataset(args['c'])
 
     with open(os.path.join(args['e'], 'conf.yml'), 'r') as f:
