@@ -354,10 +354,13 @@ def revist(M, grid_in, grid_out, tol, start=0):
     return M
 
 
-def look_for_missing_intersections(M, grid_in, grid_out, start=0, search_dist=2, tol=0.9, broadcast_dist=1):
+def look_for_missing_intersections(M, grid_in, grid_out, start=0, search_dist=2, tol=0.9, tol_less_than=True, broadcast_dist=1):
     latlon = pyproj.Proj('+init=epsg:4326')
     total_weights = M.sum(axis=-1)
-    bad = np.where(total_weights < tol)
+    if tol_less_than:
+        bad = np.where(total_weights < tol)
+    else:
+        bad = np.where(total_weights > tol)
 
     ibox_cache = {}
 
@@ -381,8 +384,12 @@ def look_for_missing_intersections(M, grid_in, grid_out, start=0, search_dist=2,
             range(max(0, oj - search_dist), min(grid_out.csres, oj + search_dist + 1)),
         ))
 
+        row_sum = 0
+
         oblock = [np.ones_like(oblock[0].flatten(), dtype=int)*of, oblock[0].flatten(), oblock[1].flatten()]
         nearby_rows = ravel_grid_index(grid_out, *oblock)
+
+        bad_row_curr_iboxes = [(f, i, j) for f, i, j in zip(*intersecting_boxes(M, out_row, grid_in))]
 
         nearby_iboxes = set()
         for nearby_row in nearby_rows:
@@ -409,24 +416,40 @@ def look_for_missing_intersections(M, grid_in, grid_out, start=0, search_dist=2,
                     grid_in.xc(ibox_idx[0])[ibox_idx[1], ibox_idx[2]] % 360,
                     grid_in.yc(ibox_idx[0])[ibox_idx[1], ibox_idx[2]]
                 )
+
+                gno = pyproj.Proj(ccrs.Gnomonic(center[1], center[0]).proj4_init)
+
                 ibox_ll = get_grid_xy(grid_in, *ibox_idx)
+                ibox_gno = transform_xy(ibox_ll, latlon, gno)
+                ibox_gno = shapely.geometry.Polygon(ibox_gno[0])
+                obox_gno = transform_xy(obox_ll, latlon, gno)
+                obox_gno = shapely.geometry.Polygon(obox_gno[0])
+
+
                 enhanced_ibox_ll = enhance_xy(ibox_ll[0], *center)
-                ibox_cache[ibox_idx] = enhanced_ibox_ll
+                if obox_gno.is_valid and ibox_gno.intersects(obox_gno):
+                    ibox_cache[ibox_idx] = enhanced_ibox_ll
+
 
         for ibox_idx in nearby_iboxes:
-            ibox_ll = ibox_cache[ibox_idx]
-            ibox_ea = transform_xy(ibox_ll, latlon, laea)
-            ibox = shapely.geometry.Polygon(ibox_ea)
+            weight = 0
+            if ibox_idx in ibox_cache:
 
-            if not ibox.is_valid or np.count_nonzero(~np.isfinite(ibox_ea)) > 0:
-                # some iboxes might be invalid because projection isn't valid over extent
-                continue
+                ibox_ll = ibox_cache[ibox_idx]
+                ibox_ea = transform_xy(ibox_ll, latlon, laea)
+                ibox = shapely.geometry.Polygon(ibox_ea)
 
-            weight = obox.intersection(ibox).area / obox.area
+                if not ibox.is_valid or np.count_nonzero(~np.isfinite(ibox_ea)) > 0:
+                    # some iboxes might be invalid because projection isn't valid over extent
+                    continue
 
-            if weight > 0:
+                weight = obox.intersection(ibox).area / obox.area
+
+            if weight > 0 or ibox_idx in bad_row_curr_iboxes:
                 col = ravel_grid_index(grid_in, *ibox_idx)
                 new_data.update({(out_row, col): weight})
+                row_sum += weight
+        #print(f'Row sum = {row_sum}')
     M_dok = M.todok()
     M_dok._update(new_data)
     return M_dok.tocoo()

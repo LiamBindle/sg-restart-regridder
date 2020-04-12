@@ -120,6 +120,14 @@ if __name__ == '__main__':
         if count_zeros(M) > 0:
             raise RuntimeError('Zero-rows still remain in the matrix')
 
+    count_gt_1 =  lambda mat: np.count_nonzero(mat.sum(axis=1) > 1.01)
+    while count_gt_1(M) > 0:
+        print('Looking for intersections that might have been wrong')
+        M = look_for_missing_intersections(M, exp_grid, ctl_grid, tol=1.01, tol_less_than=False, search_dist=0, broadcast_dist=0)
+        print_matrix_stats(M, 'post-revisit3')
+        print(f'Saving to {revisited_fname}\n')
+        scipy.sparse.save_npz(revisited_path, M)
+
     print('Normalizing rows (intersect-weighted average)')
     M = normalize(M)
     print_matrix_stats(M, 'post-normalize')
