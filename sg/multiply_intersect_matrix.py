@@ -58,6 +58,10 @@ if __name__ == '__main__':
         output_core_dims=[['oboxes']],
         vectorize=True
     )
+    ds2['max_intersect'] = xr.DataArray(
+        np.array(M.max(axis=1).todense()).squeeze(),
+        dims='oboxes'
+    )
     ds2 = ds2.unstack('oboxes')
 
     ds2 = ds2.rename({'nf_out': 'nf', 'Ydim_out': 'Ydim', 'Xdim_out': 'Xdim'})
