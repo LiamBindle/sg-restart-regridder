@@ -163,6 +163,26 @@ def comparable_gridboxes(control_grid, exp_grid, dist_tol_abs, area_tol_rel=None
 
     return co1_final, co2_final
 
+
+def plot_boxes(xy, transform, projection, **kwargs):
+    plt.figure()
+    ax = plt.axes(projection=projection)
+    ax.set_global()
+    ax.coastlines(linewidth=0.5)
+
+    # Draw minor grid boxes
+    kwargs.setdefault('linewidth', 0.5)
+    kwargs.setdefault('color', '#151515')
+    for box_xy in xy:
+        plt.plot([*box_xy[:,0], box_xy[0,0]], [*box_xy[:,1], box_xy[0,1]], transform=transform, **kwargs)
+
+    plt.show()
+
+
+
+
+
+
 def many_comparable_gridboxes(control_grid, exp_grid: sg.grids.StretchedGrid):
     # Get center coordinates
     control_xc = np.array([control_grid.xc(i) for i in range(6)])

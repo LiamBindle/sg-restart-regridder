@@ -8,6 +8,8 @@ import shapely.errors
 import pyproj
 from matplotlib.lines import Line2D
 
+import figures
+
 import sg.grids
 import sg.plot
 
@@ -50,7 +52,7 @@ if __name__ == '__main__':
     ]
 
 
-    plt.figure(figsize=(3.26772,1.6))
+    plt.figure(figsize=figures.one_col_figsize(2/1))
     ax = plt.axes(projection=ccrs.EqualEarth())
     ax.set_global()
 
@@ -66,8 +68,8 @@ if __name__ == '__main__':
     ax.add_feature(cfeature.LAND, facecolor='none', linewidth=0)
     ax.add_feature(cfeature.LAKES, linewidth=0)
     #ax.add_geometries(exclude_US, linewidth=0.2, edgecolor='gray', facecolor='none', crs=ccrs.Geodetic())
-    ax.add_feature(cfeature.BORDERS, linewidth=0.1, edgecolor='gray')
-    ax.add_feature(cfeature.STATES, linewidth=0.05, edgecolor='gray')
+    # ax.add_feature(cfeature.BORDERS, linewidth=0.1, edgecolor='gray')
+    # ax.add_feature(cfeature.STATES, linewidth=0.05, edgecolor='gray')
     #ax.outline_patch.set_edgecolor('#151515')
     ax.outline_patch.set_linewidth(0.2)
     ax.outline_patch.set_edgecolor('gray')
@@ -84,9 +86,9 @@ if __name__ == '__main__':
     legend = ax.legend(
         custom_lines, ['NA1--4', 'EU1--4', 'IN1--3', 'SE1--4'],
         loc='lower center', mode='expand', ncol=4,
-        handlelength=0.4, handletextpad=0.2, framealpha=1, prop={'size': 'small'}, columnspacing=4,
+        handlelength=1, handletextpad=0.3, framealpha=1, prop={'size': 'small'}, columnspacing=3,
         bbox_to_anchor=(0, 0.1, 1, 0.1),
-        borderpad=0.3, borderaxespad=0
+        borderpad=0.6, borderaxespad=0
     )
     legend.get_frame().set_linewidth(0.2)
     legend.get_frame().set_edgecolor('gray')
@@ -95,7 +97,8 @@ if __name__ == '__main__':
     plt.tight_layout()
     # plt.show()
 
-    plt.savefig('/home/liam/Copernicus_LaTeX_Package/figures/sg-experiments.png')
+    figures.savefig(plt.gcf(), 'sg-experiments.png', pad_inches=0.01)
+    #plt.savefig('/home/liam/Copernicus_LaTeX_Package/figures/sg-experiments.png')
 
 
 

@@ -22,12 +22,13 @@ def get_native(ds, ID, name):
     return ds[f'{name}_native_C{cs_res}'].sel(**ID_sel).squeeze()
 
 
-filename = '/home/liam/analysis/ensemble-2/c180e.nc'
-layer = 0
+# filename = '/home/liam/analysis/ensemble-2/c180e.nc'
+filename = '/extra-space/foobar/c180e-N-species.nc'
+layer = 30
 IDs = ['NA1', 'EU1', 'IN1', 'SE1']
 cmap = plt.get_cmap('Dark2')
 colors = [cmap(0), cmap(1), cmap(2), cmap(3)]
-species = 'O3'
+species = 'SpeciesConc_HNO3'
 bbox_linewidth=1.5
 narrowline=0.3
 

@@ -202,7 +202,7 @@ def make_figure(fig, ds_total, data_var, title_fmt):
             ax4 = fig.add_subplot(gs[1, 3])
 
             plot_3stats(ax1, ax2, ax3, ax4, da_local, float(ds_local.Met_TropLev.mean())-1, float(ds_local.Met_PBLTOPL.mean())-1, draw_ylabel=j == 0)  # , i=da_total.i[i*ncols+j])
-
+            # plot_3stats(ax1, ax2, ax3, ax4, da_local, 34, 6, draw_ylabel=j == 0)  # , i=da_total.i[i*ncols+j])
 
 if __name__ == '__main__':
     from matplotlib.backends.backend_pdf import PdfPages
@@ -212,16 +212,17 @@ if __name__ == '__main__':
     matplotlib.rc('font', **dict(size=4))
     matplotlib.rc('axes', **dict(labelsize='small'))
 
-    res = 720
+    res = 180
 
     # Load datasets
-    ds = xr.open_dataset(f'/home/liam/analysis/ensemble-2/c{res}e-processed.nc')
+    #ds = xr.open_dataset(f'/home/liam/analysis/ensemble-2/c{res}e-processed.nc')
+    ds = xr.open_dataset(f'/home/liam/analysis/ensemble-2/August/c180e-aug-processed.nc')
 
     # Concatenate datasets
 
     ds = ds.sortby('stretch_factor').sortby('cs_res', ascending=False).drop_sel(ID=['CTL', 'NA4']) #.dropna('ID')
 
-    species = ['O3', 'NOx']# , 'NOx', 'OH', 'CO']
+    species = [ 'OH'] #['O3', 'NOx']# , 'NOx', 'OH', 'CO']
 
 
     # pp = PdfPages(f'summary-C180.pdf')
@@ -235,7 +236,7 @@ if __name__ == '__main__':
         # Drop incomplete simulations
         make_figure(fig, ds, s, '\\textbf{{{ID}}}: C{cs_res}, SF:{sf:5.2f}')
         #plt.suptitle(f'Species: {s}')
-        figures.savefig(fig, f'{s}-summary-{res}.eps')
+        figures.savefig(fig, f'{s}-summary-{res}-August.eps')
         # pp.savefig(fig, papertype='letter', orientation='portrait')
 
     # pp.close()

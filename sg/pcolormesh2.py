@@ -103,6 +103,7 @@ if __name__ == '__main__':
                         metavar='L',
                         type=str,
                         nargs='+',
+                        default=[],
                         help='model level')
     parser.add_argument('-v',
                         metavar='V',
@@ -153,7 +154,14 @@ if __name__ == '__main__':
     data = []
     face_num = None
     for output_file, variable_name in zip(args['i'], args['v']):
-        da = xr.open_dataset(os.path.join(output_file))[variable_name]
+
+        operators = ['+', '-', '*', '/',  ]
+
+
+        path = os.path.join(output_file)
+
+
+        da = xr.open_dataset()[variable_name]
         for k, v in zip(args['s'][::2], args['s'][1::2]):
             if k == 'nf' or k =='face':
                 face_num = int(v)

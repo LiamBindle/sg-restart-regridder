@@ -4,6 +4,7 @@ import matplotlib.colorbar
 import cartopy.crs as ccrs
 import pyproj
 import shapely
+import figures
 
 from sg.grids import StretchedGrid
 from sg.compare_grids import get_am_and_pm_masks_and_polygons_outline
@@ -100,8 +101,8 @@ def grid_box_length(ax, xx_sg, yy_sg, xx_cs, yy_cs, **kwargs):
 
 
 if __name__ == '__main__':
-    fig = plt.figure(figsize=(4.724, 2.3))
-    gs = plt.GridSpec(2, 32, figure=fig)
+    fig = plt.figure(figsize=figures.two_col_figsize(2/1))
+    gs = plt.GridSpec(2, 5, figure=fig, wspace=0, hspace=0.05, left=0, right=1, bottom=0, top=1, width_ratios=[2,10,10,10,1])
 
     front_projection = ccrs.Orthographic(0+20, 20)
     back_projection = ccrs.Orthographic(-180+20, 0+20)
@@ -113,8 +114,8 @@ if __name__ == '__main__':
     ]
 
     for i, grid in enumerate(grids):
-        ax_front = fig.add_subplot(gs[0, i*10:(i+1)*10], projection=front_projection)
-        ax_back = fig.add_subplot(gs[1, i*10:(i+1)*10], projection=back_projection)
+        ax_front = fig.add_subplot(gs[0, i+1], projection=front_projection)
+        ax_back = fig.add_subplot(gs[1, i+1], projection=back_projection)
 
         ax_front.set_global()
         ax_back.set_global()
@@ -139,9 +140,21 @@ if __name__ == '__main__':
             if face != 2:
                 draw_major_grid_boxes_naive(ax_front, grid.xe(face), grid.ye(face))
                 draw_major_grid_boxes_naive(ax_back, grid.xe(face), grid.ye(face))
-    plt.text(0.02, 0.28, 'Back', rotation='horizontal', va='center', ha='left', transform=plt.gcf().transFigure)
 
-    cbar_ax = fig.add_subplot(gs[:,31:32])
+    title_axes = [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[1, 0])]
+    for title_ax in title_axes:
+        title_ax.spines['top'].set_visible(False)
+        title_ax.spines['right'].set_visible(False)
+        title_ax.spines['left'].set_visible(False)
+        title_ax.spines['bottom'].set_visible(False)
+        plt.setp(title_ax.get_xticklabels(), visible=False)
+        plt.setp(title_ax.get_yticklabels(), visible=False)
+        title_ax.get_yaxis().set_visible(False)
+        title_ax.get_xaxis().set_visible(False)
+    title_axes[0].annotate('Front', xy=(0.0, 0.5), va='center', ha='left')
+    title_axes[1].annotate('Back', xy=(0.0, 0.5), va='center', ha='left')
+
+    cbar_ax = fig.add_subplot(gs[:,-1])
     cb = matplotlib.colorbar.ColorbarBase(
         ax=cbar_ax,
         cmap=plt.get_cmap('RdBu_r'),
@@ -149,8 +162,8 @@ if __name__ == '__main__':
         ticks=np.log2([1/6, 1/2, 1, 2, 6])
     )
     cb.set_ticklabels(['1/6', '1/2', '1', '2', '6'])
-    plt.text(0.02, 0.7, 'Front', rotation='horizontal', va='center', ha='left', transform=plt.gcf().transFigure)
     #plt.gcf().colorbar(cb, ax=[ax_front, ax_back])
     plt.tight_layout()
     # plt.show()
-    plt.savefig('/home/liam/Copernicus_LaTeX_Package/figures/sg-illustrate.png')
+    figures.savefig(fig, 'sg-illustrate.png', pad_inches=0.02)
+    #plt.savefig('/home/liam/Copernicus_LaTeX_Package/figures/sg-illustrate.png')

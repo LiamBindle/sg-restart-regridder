@@ -28,7 +28,7 @@ if __name__ == '__main__':
     yy2 = schmidt_transform(yy, ss)
 
 
-    plt.figure(figsize=(3.26772, 2.8))
+    plt.figure(figsize=figures.one_col_figsize(1))
 
 
     r_earth = 6378.1  # km
@@ -39,8 +39,12 @@ if __name__ == '__main__':
         np.log2(dydy),
         cmap='RdBu_r',
         vmin=-4, vmax=4,
-        antialiased=True
+        antialiased=True,
+        rasterized=True
     )
+
+    plt.xlim([1, 16])
+    plt.xticks([1, 4, 8, 12, 16])
 
     # contour = plt.contour(
     #     ss[:, :-1],
@@ -89,6 +93,6 @@ if __name__ == '__main__':
     plt.tight_layout()
     # plt.show()
 
-    figures.savefig(plt.gcf(), 'grid-box-divergence.eps')
+    figures.savefig(plt.gcf(), 'grid-box-divergence.eps', pad_inches=0.05)
     #plt.savefig('/home/liam/Copernicus_LaTeX_Package/figures/grid-box-divergence.png')
 
