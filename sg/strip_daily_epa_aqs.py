@@ -34,6 +34,9 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--var',
                         type=str,
                         default='SpeciesConc_NO2',)
+    parser.add_argument('--min-obs-count',
+                        type=int,
+                        default=24)
     parser.add_argument('--start-date',
                         type=str,
                         default=None)
@@ -48,8 +51,8 @@ if __name__ == '__main__':
     aqs['Date Local'] = pd.to_datetime(aqs['Date Local'])
     aqs['Date of Last Change'] = pd.to_datetime(aqs['Date of Last Change'])
 
-    aqs = aqs.loc[aqs['State Name'] == 'California']    # Only California
-    aqs = aqs.loc[aqs['Observation Count'] == 24]       # Only full samples
+    aqs = aqs.loc[aqs['State Name'] == 'California']                # Only California
+    aqs = aqs.loc[aqs['Observation Count'] == args.min_obs_count]   # Only full samples
 
     aqs = aqs.set_index(['Date Local', 'Site Num']).sort_index()
 
