@@ -115,7 +115,12 @@ if __name__ == '__main__':
         new_sites = set(sites.index) - set(index_cache.keys())
 
         for new_site in new_sites:
-            distances = central_angle(da.lons, da.lats, sites.loc[new_site]['Longitude'], sites.loc[new_site]['Latitude'])
+            site_lon = sites.loc[new_site]['Longitude']
+            site_lat = sites.loc[new_site]['Latitude']
+            try:
+                distances = central_angle(da.lons, da.lats, site_lon, site_lat)
+            except ValueError:
+                print(site_lon, site_lat, da.lons, da.lats)
             index = np.unravel_index(distances.argmin(), distances.shape)
             index_cache[new_site] = index
 
