@@ -121,6 +121,7 @@ if __name__ == '__main__':
                 distances = central_angle(da.lons, da.lats, site_lon, site_lat)
             except ValueError:
                 print(site_lon, site_lat, da.lons, da.lats)
+                print(sites)
             index = np.unravel_index(distances.argmin(), distances.shape)
             index_cache[new_site] = index
 
