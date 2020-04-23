@@ -54,33 +54,33 @@ if __name__ == '__main__':
     aqs = aqs.loc[aqs['State Name'] == 'California']                # Only California
     aqs = aqs.loc[aqs['Observation Count'] >= args.min_obs_count]   # Only full samples
 
-    aqs = aqs.set_index(['Date Local', 'Site Num']).sort_index()
+    aqs = aqs.set_index(['Date Local', 'State Code', 'County Code', 'Site Num']).sort_index()
 
     diag_fpath = [
-        'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_0830z.nc4',
-        'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_0930z.nc4',
-        'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_1030z.nc4',
-        'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_1130z.nc4',
-        'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_1230z.nc4',
-        'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_1330z.nc4',
-        'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_1430z.nc4',
-        'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_1530z.nc4',
+        # 'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_0830z.nc4',
+        # 'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_0930z.nc4',
+        # 'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_1030z.nc4',
+        # 'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_1130z.nc4',
+        # 'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_1230z.nc4',
+        # 'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_1330z.nc4',
+        # 'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_1430z.nc4',
+        # 'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_1530z.nc4',
         'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_1630z.nc4',
         'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_1730z.nc4',
-        'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_1830z.nc4',
-        'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_1930z.nc4',
-        'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_2030z.nc4',
-        'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_2130z.nc4',
-        'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_2230z.nc4',
-        'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_2330z.nc4',
-        'GCHP.SpeciesConc.{next_day.year:04d}{next_day.month:02d}{next_day.day:02d}_0030z.nc4',
-        'GCHP.SpeciesConc.{next_day.year:04d}{next_day.month:02d}{next_day.day:02d}_0130z.nc4',
-        'GCHP.SpeciesConc.{next_day.year:04d}{next_day.month:02d}{next_day.day:02d}_0230z.nc4',
-        'GCHP.SpeciesConc.{next_day.year:04d}{next_day.month:02d}{next_day.day:02d}_0330z.nc4',
-        'GCHP.SpeciesConc.{next_day.year:04d}{next_day.month:02d}{next_day.day:02d}_0430z.nc4',
-        'GCHP.SpeciesConc.{next_day.year:04d}{next_day.month:02d}{next_day.day:02d}_0530z.nc4',
-        'GCHP.SpeciesConc.{next_day.year:04d}{next_day.month:02d}{next_day.day:02d}_0630z.nc4',
-        'GCHP.SpeciesConc.{next_day.year:04d}{next_day.month:02d}{next_day.day:02d}_0730z.nc4',
+        # 'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_1830z.nc4',
+        # 'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_1930z.nc4',
+        # 'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_2030z.nc4',
+        # 'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_2130z.nc4',
+        # 'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_2230z.nc4',
+        # 'GCHP.SpeciesConc.{date.year:04d}{date.month:02d}{date.day:02d}_2330z.nc4',
+        # 'GCHP.SpeciesConc.{next_day.year:04d}{next_day.month:02d}{next_day.day:02d}_0030z.nc4',
+        # 'GCHP.SpeciesConc.{next_day.year:04d}{next_day.month:02d}{next_day.day:02d}_0130z.nc4',
+        # 'GCHP.SpeciesConc.{next_day.year:04d}{next_day.month:02d}{next_day.day:02d}_0230z.nc4',
+        # 'GCHP.SpeciesConc.{next_day.year:04d}{next_day.month:02d}{next_day.day:02d}_0330z.nc4',
+        # 'GCHP.SpeciesConc.{next_day.year:04d}{next_day.month:02d}{next_day.day:02d}_0430z.nc4',
+        # 'GCHP.SpeciesConc.{next_day.year:04d}{next_day.month:02d}{next_day.day:02d}_0530z.nc4',
+        # 'GCHP.SpeciesConc.{next_day.year:04d}{next_day.month:02d}{next_day.day:02d}_0630z.nc4',
+        # 'GCHP.SpeciesConc.{next_day.year:04d}{next_day.month:02d}{next_day.day:02d}_0730z.nc4',
     ]
 
     index_cache = {}
@@ -110,20 +110,14 @@ if __name__ == '__main__':
             compat='override'
         ).isel(lev=0).squeeze()['SpeciesConc_NO2'].mean('time') * 1e9
 
-        sites = new_df.loc[date, :]
+        sites = new_df.loc[date]
 
         new_sites = set(sites.index) - set(index_cache.keys())
 
         for new_site in new_sites:
             site_lon = sites.loc[new_site]['Longitude']
             site_lat = sites.loc[new_site]['Latitude']
-            try:
-                distances = central_angle(da.lons, da.lats, site_lon, site_lat)
-            except ValueError:
-                print(site_lon, site_lat, da.lons, da.lats)
-                print(sites)
-                print(f'len(sites.index): {len(sites.index)}')
-                print(f'len(set(sites.index)): {len(set(sites.index))}')
+            distances = central_angle(da.lons, da.lats, site_lon, site_lat)
             index = np.unravel_index(distances.argmin(), distances.shape)
             index_cache[new_site] = index
 
@@ -134,8 +128,7 @@ if __name__ == '__main__':
 
         da.close()
 
-        mi = pd.MultiIndex.from_product([[date], sites.index])
-        aqs_new = aqs_new._set_value(mi, 'Simulated Mean', mean_values)
+        aqs_new.at[new_df.index, 'Simulated Mean'] = mean_values
 
     aqs_new = aqs_new.dropna()
 
