@@ -122,6 +122,8 @@ if __name__ == '__main__':
             except ValueError:
                 print(site_lon, site_lat, da.lons, da.lats)
                 print(sites)
+                print(f'len(sites.index): {len(sites.index)}')
+                print(f'len(set(sites.index)): {len(set(sites.index))}')
             index = np.unravel_index(distances.argmin(), distances.shape)
             index_cache[new_site] = index
 
