@@ -52,7 +52,7 @@ if __name__ == '__main__':
     aqs['Date of Last Change'] = pd.to_datetime(aqs['Date of Last Change'])
 
     aqs = aqs.loc[aqs['State Name'] == 'California']                # Only California
-    aqs = aqs.loc[aqs['Observation Count'] == args.min_obs_count]   # Only full samples
+    aqs = aqs.loc[aqs['Observation Count'] >= args.min_obs_count]   # Only full samples
 
     aqs = aqs.set_index(['Date Local', 'Site Num']).sort_index()
 
