@@ -112,8 +112,8 @@ if __name__ == '__main__':
         'SpeciesConc_R4N2': 1e9,
         'SpeciesConc_PAN':  1e9,
         'SpeciesConc_HNO3': 1e9,
-        'SpeciesConc_O3': 1e9,
-        'SpeciesConc_CO': 1e9,
+        'SpeciesConc_O3': 1e6,
+        'SpeciesConc_CO': 1e6,
         'SpeciesConc_SO2': 1e9,
         'PM25': 1.0,
     }
@@ -188,7 +188,7 @@ if __name__ == '__main__':
 
         ds.close()
 
-    aqs_new = aqs_new.dropna()
+    aqs_new = aqs_new.dropna(subset=['Simulated Mean'])
 
     aqs_new.to_csv(args.o.format(species=args.var))
 
