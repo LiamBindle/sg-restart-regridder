@@ -25,7 +25,7 @@ if __name__ == '__main__':
                         type=str,)
     parser.add_argument('-a', '--aqs',
                         type=str,
-                        default='daily_42602_2016.csv',)
+                        default='daily_42602_2016.csv')
     parser.add_argument('-v', '--var',
                         type=str,
                         default='SpeciesConc_NO2',)
@@ -38,13 +38,28 @@ if __name__ == '__main__':
     parser.add_argument('--end-date',
                         type=str,
                         default=None)
+    parser.add_argument('--aqs-year',
+                        type=int,
+                        default=2016)
     parser.add_argument('-o',
                         type=str,
-                        default='daily_aqs_comparison.csv')
+                        default='daily_aqs_{species}_comparison.csv')
     args = parser.parse_args()
 
+    if os.path.isdir(args.aqs):
+        aqs_products = {
+            'SpeciesConc_O3':  44201,
+            'SpeciesConc_SO2': 42401,
+            'SpeciesConc_CO':  42101,
+            'SpeciesConc_NO2': 42602,
+            'PM25': 88101,
+        }
+        aqs_fpath = os.path.join(args.aqs, f'daily_{aqs_products[args.var]}_{args.aqs_year}.csv')
+    else:
+        aqs_fpath = args.aqs
+
     # Load AQS table
-    aqs = pd.read_csv(args.aqs)
+    aqs = pd.read_csv(aqs_fpath)
     # Convert date rows to type datetime
     aqs['Date Local'] = pd.to_datetime(aqs['Date Local'])
     aqs['Date of Last Change'] = pd.to_datetime(aqs['Date of Last Change'])
@@ -87,6 +102,8 @@ if __name__ == '__main__':
         collection='SpeciesConc'
     elif args.var == 'PM25':
         collection = 'AerosolMass'
+    else:
+        raise ValueError(f"Unknown species: {args.var}")
 
 
     # Define scale factors that are applied to simulated concentrations
@@ -95,6 +112,7 @@ if __name__ == '__main__':
         'SpeciesConc_R4N2': 1e9,
         'SpeciesConc_PAN':  1e9,
         'SpeciesConc_HNO3': 1e9,
+        'PM25': 1.0,
     }
 
     # Cache of station identifier -> simulation grid index
@@ -117,7 +135,7 @@ if __name__ == '__main__':
 
     # Loop through dates
     for date, new_df in tqdm(aqs.groupby(level=0), desc='Date'):
-        rpaths = [os.path.join(args.datadir, fpath.format(date=date, next_day=date + pd.Timedelta(days=1))) for fpath in diag_fpath]
+        rpaths = [os.path.join(args.datadir, fpath.format(date=date, next_day=date + pd.Timedelta(days=1), collection=collection)) for fpath in diag_fpath]
         rpaths_missing = any([not os.path.exists(rpath) for rpath in rpaths])
 
         if rpaths_missing:
@@ -169,7 +187,7 @@ if __name__ == '__main__':
 
     aqs_new = aqs_new.dropna()
 
-    aqs_new.to_csv(args.o)
+    aqs_new.to_csv(args.o.format(species=args.var))
 
     try:
         def mean_bias(y_true, y_pred):
@@ -190,5 +208,15 @@ if __name__ == '__main__':
         print(f"  MAE:  {mae:7.3f} [ppb]")
         print(f"  RMSE: {rmse:7.3f} [ppb]")
         print(f"  R2:   {r2:7.3f}")
+        if 'Corrected Arithmetic Mean' in aqs_new.columns:
+            mb = mean_bias(aqs_new['Corrected Arithmetic Mean'], aqs_new['Simulated Mean'])
+            mae = sklearn.metrics.mean_absolute_error(aqs_new['Corrected Arithmetic Mean'], aqs_new['Simulated Mean'])
+            rmse = np.sqrt(sklearn.metrics.mean_squared_error(aqs_new['Corrected Arithmetic Mean'], aqs_new['Simulated Mean']))
+            r2 = sklearn.metrics.r2_score(aqs_new['Corrected Arithmetic Mean'], aqs_new['Simulated Mean'])
+            print("Metrics (corrected observations)")
+            print(f"  MB:   {mb:7.3f} [ppb]")
+            print(f"  MAE:  {mae:7.3f} [ppb]")
+            print(f"  RMSE: {rmse:7.3f} [ppb]")
+            print(f"  R2:   {r2:7.3f}")
     except:
         pass
