@@ -70,6 +70,8 @@ if __name__ == '__main__':
 
     if args.var == 'SpeciesConc_SO2':
         aqs = aqs.loc[aqs['Pollutant Standard'] == 'SO2 1-hour 2010']
+    if args.var == 'SpeciesConc_CO':
+        aqs = aqs.loc[aqs['Pollutant Standard'] == 'CO 1-hour 1971']
 
     # Reindex according to dates (for comparison w/ simulation) and the station identifier
     aqs = aqs.set_index(['Date Local', 'State Code', 'County Code', 'Site Num']).sort_index()
@@ -170,8 +172,8 @@ if __name__ == '__main__':
         new_sites = set(sites.index) - set(index_cache.keys())
 
         for new_site in new_sites:
-            site_lon = sites.loc[new_site]['Longitude']
-            site_lat = sites.loc[new_site]['Latitude']
+            site_lon = sites.loc[new_site]['Longitude'].item()
+            site_lat = sites.loc[new_site]['Latitude'].item()
             distances = central_angle(ds.lons, ds.lats, site_lon, site_lat)
             index = np.unravel_index(distances.argmin(), distances.shape)
             index_cache[new_site] = index
@@ -204,7 +206,7 @@ if __name__ == '__main__':
         r2 = sklearn.metrics.r2_score(aqs_new['Arithmetic Mean'], aqs_new['Simulated Mean'])
 
         print("Observation stats")
-        print(f"  N:    {aqs_new['Simulated Mean'].count()}")
+        print(f"  N:    {aqs_new['Simulated Mean'].count():7d}")
         print(f"  Min:  {aqs_new['Arithmetic Mean'].min():7.3f}")
         print(f"  P25:  {aqs_new['Arithmetic Mean'].quantile(0.25):7.3f}")
         print(f"  P50:  {aqs_new['Arithmetic Mean'].quantile(0.25):7.3f}")
