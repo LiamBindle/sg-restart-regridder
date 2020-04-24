@@ -204,7 +204,7 @@ if __name__ == '__main__':
         r2 = sklearn.metrics.r2_score(aqs_new['Arithmetic Mean'], aqs_new['Simulated Mean'])
 
         print("Observation stats")
-        print(f"  N:    {aqs_new.count()}")
+        print(f"  N:    {aqs_new['Simulated Mean'].count()}")
         print(f"  Min:  {aqs_new['Arithmetic Mean'].min():7.3f}")
         print(f"  P25:  {aqs_new['Arithmetic Mean'].quantile(0.25):7.3f}")
         print(f"  P50:  {aqs_new['Arithmetic Mean'].quantile(0.25):7.3f}")
