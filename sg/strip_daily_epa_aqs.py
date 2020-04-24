@@ -68,13 +68,8 @@ if __name__ == '__main__':
     aqs = aqs.loc[aqs['State Name'] == 'California']                # Only California
     aqs = aqs.loc[aqs['Observation Percent'] >= args.coverage_thresh]   # Only full samples
 
-    if args.var == 'SpeciesConc_SO2':
-        aqs = aqs.loc[aqs['Pollutant Standard'] == 'SO2 1-hour 2010']
-    if args.var == 'SpeciesConc_CO':
-        aqs = aqs.loc[aqs['Pollutant Standard'] == 'CO 1-hour 1971']
-
     # Reindex according to dates (for comparison w/ simulation) and the station identifier
-    aqs = aqs.set_index(['Date Local', 'State Code', 'County Code', 'Site Num']).sort_index()
+    aqs = aqs.set_index(['Date Local', 'State Code', 'County Code', 'Site Num', 'Pollutant Standard', 'POC', 'Parameter Code']).sort_index()
 
     # Declare diagnostic file path templates for 24-hr average
     diag_fpath = [
@@ -169,16 +164,20 @@ if __name__ == '__main__':
 
         sites = new_df.loc[date]
 
-        new_sites = set(sites.index) - set(index_cache.keys())
+        site_indexes = list(zip(*[sites.index.get_level_values(i) for i in range(3)]))
+        new_sites = set(site_indexes) - set(index_cache.keys())
 
         for new_site in new_sites:
-            site_lon = sites.loc[new_site]['Longitude'].item()
-            site_lat = sites.loc[new_site]['Latitude'].item()
+            site_lon = sites.loc[new_site]['Longitude']
+            site_lat = sites.loc[new_site]['Latitude']
+            if np.atleast_1d(site_lon).size > 1:
+                site_lon = site_lon[0]
+                site_lat = site_lat[0]
             distances = central_angle(ds.lons, ds.lats, site_lon, site_lat)
             index = np.unravel_index(distances.argmin(), distances.shape)
             index_cache[new_site] = index
 
-        slices = [index_cache[site] for site in sites.index]
+        slices = [index_cache[site] for site in site_indexes]
         slices = list(zip(*slices))
 
         simulated_means = {
