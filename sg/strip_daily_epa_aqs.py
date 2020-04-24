@@ -68,6 +68,9 @@ if __name__ == '__main__':
     aqs = aqs.loc[aqs['State Name'] == 'California']                # Only California
     aqs = aqs.loc[aqs['Observation Percent'] >= args.coverage_thresh]   # Only full samples
 
+    if args.var == 'SpeciesConc_SO2':
+        aqs = aqs.loc[aqs['Pollutant Standard'] == 'SO2 1-hour 2010']
+
     # Reindex according to dates (for comparison w/ simulation) and the station identifier
     aqs = aqs.set_index(['Date Local', 'State Code', 'County Code', 'Site Num']).sort_index()
 
@@ -201,15 +204,16 @@ if __name__ == '__main__':
         r2 = sklearn.metrics.r2_score(aqs_new['Arithmetic Mean'], aqs_new['Simulated Mean'])
 
         print("Observation stats")
-        print(f"  Min:  {aqs_new['Arithmetic Mean'].min():7.3f} [ppb]")
-        print(f"  P25:  {aqs_new['Arithmetic Mean'].quantile(0.25):7.3f} [ppb]")
-        print(f"  P50:  {aqs_new['Arithmetic Mean'].quantile(0.25):7.3f} [ppb]")
-        print(f"  P75:  {aqs_new['Arithmetic Mean'].quantile(0.25):7.3f} [ppb]")
-        print(f"  Max:  {aqs_new['Arithmetic Mean'].max():7.3f} [ppb]")
+        print(f"  N:    {aqs_new.count()}")
+        print(f"  Min:  {aqs_new['Arithmetic Mean'].min():7.3f}")
+        print(f"  P25:  {aqs_new['Arithmetic Mean'].quantile(0.25):7.3f}")
+        print(f"  P50:  {aqs_new['Arithmetic Mean'].quantile(0.25):7.3f}")
+        print(f"  P75:  {aqs_new['Arithmetic Mean'].quantile(0.25):7.3f}")
+        print(f"  Max:  {aqs_new['Arithmetic Mean'].max():7.3f}")
         print("Metrics")
-        print(f"  MB:   {mb:7.3f} [ppb]")
-        print(f"  MAE:  {mae:7.3f} [ppb]")
-        print(f"  RMSE: {rmse:7.3f} [ppb]")
+        print(f"  MB:   {mb:7.3f}")
+        print(f"  MAE:  {mae:7.3f}")
+        print(f"  RMSE: {rmse:7.3f}")
         print(f"  R2:   {r2:7.3f}")
         if 'Corrected Arithmetic Mean' in aqs_new.columns:
             mb = mean_bias(aqs_new['Corrected Arithmetic Mean'], aqs_new['Simulated Mean'])
@@ -217,9 +221,9 @@ if __name__ == '__main__':
             rmse = np.sqrt(sklearn.metrics.mean_squared_error(aqs_new['Corrected Arithmetic Mean'], aqs_new['Simulated Mean']))
             r2 = sklearn.metrics.r2_score(aqs_new['Corrected Arithmetic Mean'], aqs_new['Simulated Mean'])
             print("Metrics (corrected observations)")
-            print(f"  MB:   {mb:7.3f} [ppb]")
-            print(f"  MAE:  {mae:7.3f} [ppb]")
-            print(f"  RMSE: {rmse:7.3f} [ppb]")
+            print(f"  MB:   {mb:7.3f}")
+            print(f"  MAE:  {mae:7.3f}")
+            print(f"  RMSE: {rmse:7.3f}")
             print(f"  R2:   {r2:7.3f}")
     except:
         pass
