@@ -67,6 +67,7 @@ if __name__ == '__main__':
     # Retain relevant rows
     aqs = aqs.loc[aqs['State Name'] == 'California']                # Only California
     aqs = aqs.loc[aqs['Observation Percent'] >= args.coverage_thresh]   # Only full samples
+    aqs = aqs.loc[aqs['Event Type'] == 'None']  # Only samples with no event
 
     # Reindex according to dates (for comparison w/ simulation) and the station identifier
     aqs = aqs.set_index(['Date Local', 'State Code', 'County Code', 'Site Num', 'Pollutant Standard', 'POC', 'Parameter Code']).sort_index()
