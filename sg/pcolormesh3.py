@@ -152,6 +152,16 @@ if __name__ == '__main__':
                         type=str,
                         default='cividis',
                         help='color map')
+    parser.add_argument('--extent',
+                        metavar='x0x1y0y1',
+                        type=float,
+                        default=None,
+                        help='map extent')
+    parser.add_argument('--crs',
+                        metavar='CRS',
+                        type=str,
+                        default='ccrs.EqualEarth()',
+                        help='cartopy CRS eval')
     args = vars(parser.parse_args())
     plt.rc('text', usetex=False)
 
@@ -200,8 +210,11 @@ if __name__ == '__main__':
         )
 
     plt.figure(figsize=(8,6))
-    ax = plt.axes(projection=ccrs.EqualEarth())
-    ax.set_global()
+    ax = plt.axes(projection=eval(args['crs']))
+    if args['extent'] is None:
+        ax.set_global()
+    else:
+        ax.set_extent(*args['extent'])
     ax.coastlines(linewidth=0.5)
 
     for nf in range(6):
