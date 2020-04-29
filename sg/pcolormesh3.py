@@ -153,6 +153,7 @@ if __name__ == '__main__':
                         default='cividis',
                         help='color map')
     parser.add_argument('--extent',
+                        nargs=4,
                         metavar='x0x1y0y1',
                         type=float,
                         default=None,
@@ -214,7 +215,7 @@ if __name__ == '__main__':
     if args['extent'] is None:
         ax.set_global()
     else:
-        ax.set_extent(*args['extent'])
+        ax.set_extent(args['extent'], ccrs.PlateCarree())
     ax.coastlines(linewidth=0.5)
 
     for nf in range(6):
