@@ -93,4 +93,7 @@ if __name__ == '__main__':
     )
     ds_out.to_netcdf(fname_out)
 
+    for varname in ds_out.data_vars:
+        ds_out[varname].attrs = ds[varname].attrs
+
     print(ds_out)
