@@ -31,6 +31,9 @@ if __name__ == '__main__':
                         default='13:30Z')
     parser.add_argument('--ascending',
                         action='store_false')
+    parser.add_argument('--orbits-per-day',
+                        type=float,
+                        default=14.2)
     parser.add_argument('--collection',
                         type=str,
                         default='SpeciesConc')
@@ -57,35 +60,40 @@ if __name__ == '__main__':
         coords='minimal',
     )
 
+    lats = ds['lats'].values
     lons = ds['lons'].values
     lons[lons > 180] -= 360
     ds['lons'].values = lons
 
-    solar_time_timedelta_min = lons/360 * 24 * 60
-    solar_time_timedelta_min = solar_time_timedelta_min.astype('timedelta64[m]')
-    solar_time = base_date.to_datetime64() - solar_time_timedelta_min
+    overpass_offset = lats/90 * 24/args['orbits_per_day']/4 * 60  # vary overpass time with latitude
+    if args['ascending']:
+        overpass_offset = -overpass_offset  # overpass delayed at high northern latitudes if ascending
 
-    solar_time_floor_timedelta_min = (np.floor(solar_time_timedelta_min.astype(float) / 30) * 30).astype('timedelta64[m]')
-    solar_time_ceil_timedelta_min = (np.ceil(solar_time_timedelta_min.astype(float) / 30) * 30).astype('timedelta64[m]')
-    solar_time_floor = base_date.to_datetime64() - solar_time_floor_timedelta_min
-    solar_time_ceil = base_date.to_datetime64() - solar_time_ceil_timedelta_min
+    overpass_time_timedelta_min = lons/360 * 24 * 60 + overpass_offset
+    overpass_time_timedelta_min = overpass_time_timedelta_min.astype('timedelta64[m]')
+    overpass_time = base_date.to_datetime64() - overpass_time_timedelta_min
 
-    floor_weight = 1 - (solar_time_timedelta_min.astype(int) % 30) / 30
+    overpass_time_floor_timedelta_min = (np.floor(overpass_time_timedelta_min.astype(float) / 30) * 30).astype('timedelta64[m]')
+    overpass_time_ceil_timedelta_min = (np.ceil(overpass_time_timedelta_min.astype(float) / 30) * 30).astype('timedelta64[m]')
+    overpass_time_floor = base_date.to_datetime64() - overpass_time_floor_timedelta_min
+    overpass_time_ceil = base_date.to_datetime64() - overpass_time_ceil_timedelta_min
+
+    floor_weight = 1 - (overpass_time_timedelta_min.astype(int) % 30) / 30
     ceil_weight = 1 - floor_weight
 
-    ds.coords['solar_time'] = (['nf', 'Ydim', 'Xdim'], solar_time)
-    ds.coords['solar_time_floor'] = (['nf', 'Ydim', 'Xdim'], solar_time_floor)
-    ds.coords['solar_time_ceil'] = (['nf', 'Ydim', 'Xdim'], solar_time_ceil)
-    ds.coords['solar_time_floor_weight'] = (['nf', 'Ydim', 'Xdim'], floor_weight)
-    ds.coords['solar_time_ceil_weight'] = (['nf', 'Ydim', 'Xdim'], ceil_weight)
+    ds.coords['overpass_time'] = (['nf', 'Ydim', 'Xdim'], overpass_time)
+    ds.coords['overpass_time_floor'] = (['nf', 'Ydim', 'Xdim'], overpass_time_floor)
+    ds.coords['overpass_time_ceil'] = (['nf', 'Ydim', 'Xdim'], overpass_time_ceil)
+    ds.coords['overpass_time_floor_weight'] = (['nf', 'Ydim', 'Xdim'], floor_weight)
+    ds.coords['overpass_time_ceil_weight'] = (['nf', 'Ydim', 'Xdim'], ceil_weight)
 
-    drop_vars = [v for v in ds.data_vars if not set(ds.solar_time.dims).issubset(set(ds[v].dims))]
+    drop_vars = [v for v in ds.data_vars if not set(ds.overpass_time.dims).issubset(set(ds[v].dims))]
     ds = ds.drop(drop_vars)
 
-    floor = ds.sel(time=ds.solar_time_floor)
-    ceil = ds.sel(time=ds.solar_time_ceil)
+    floor = ds.sel(time=ds.overpass_time_floor)
+    ceil = ds.sel(time=ds.overpass_time_ceil)
 
-    ds_out = floor * ds.solar_time_floor_weight + ceil * ds.solar_time_ceil_weight
+    ds_out = floor * ds.overpass_time_floor_weight + ceil * ds.overpass_time_ceil_weight
 
     fname_out = os.path.join(
         args['datadir'],
