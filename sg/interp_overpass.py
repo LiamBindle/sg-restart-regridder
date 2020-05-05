@@ -67,8 +67,8 @@ if __name__ == '__main__':
 
     solar_time_floor_timedelta_min = (np.floor(solar_time_timedelta_min.astype(float) / 30) * 30).astype('timedelta64[m]')
     solar_time_ceil_timedelta_min = (np.ceil(solar_time_timedelta_min.astype(float) / 30) * 30).astype('timedelta64[m]')
-    solar_time_floor = solar_time_floor_timedelta_min + base_date.to_datetime64()
-    solar_time_ceil = solar_time_ceil_timedelta_min + base_date.to_datetime64()
+    solar_time_floor = base_date.to_datetime64() - solar_time_floor_timedelta_min
+    solar_time_ceil = base_date.to_datetime64() - solar_time_ceil_timedelta_min
 
     floor_weight = 1 - (solar_time_timedelta_min.astype(int) % 30) / 30
     ceil_weight = 1 - floor_weight
