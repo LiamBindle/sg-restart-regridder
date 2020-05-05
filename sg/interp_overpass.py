@@ -63,7 +63,7 @@ if __name__ == '__main__':
 
     solar_time_timedelta_min = lons/360 * 24 * 60
     solar_time_timedelta_min = solar_time_timedelta_min.astype('timedelta64[m]')
-    solar_time = solar_time_timedelta_min + base_date.to_datetime64()
+    solar_time = solar_time_timedelta_min - base_date.to_datetime64()
 
     solar_time_floor_timedelta_min = (np.floor(solar_time_timedelta_min.astype(float) / 30) * 30).astype('timedelta64[m]')
     solar_time_ceil_timedelta_min = (np.ceil(solar_time_timedelta_min.astype(float) / 30) * 30).astype('timedelta64[m]')
