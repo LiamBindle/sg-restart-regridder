@@ -76,6 +76,8 @@ if __name__ == '__main__':
     ds.coords['solar_time'] = (['nf', 'Ydim', 'Xdim'], solar_time)
     ds.coords['solar_time_floor'] = (['nf', 'Ydim', 'Xdim'], solar_time_floor)
     ds.coords['solar_time_ceil'] = (['nf', 'Ydim', 'Xdim'], solar_time_ceil)
+    ds.coords['solar_time_floor_weight'] = (['nf', 'Ydim', 'Xdim'], floor_weight)
+    ds.coords['solar_time_ceil_weight'] = (['nf', 'Ydim', 'Xdim'], ceil_weight)
 
     drop_vars = [v for v in ds.data_vars if not set(ds.solar_time.dims).issubset(set(ds[v].dims))]
     ds = ds.drop(drop_vars)
@@ -83,10 +85,9 @@ if __name__ == '__main__':
     floor = ds.sel(time=ds.solar_time_floor)
     ceil = ds.sel(time=ds.solar_time_ceil)
 
-    ds2 = floor * floor_weight + ceil * ceil_weight
+    ds2 = floor * ds.solar_time_floor_weight + ceil * ds.solar_time_ceil_weight
 
     print(ds2)
-
 
     exit(0)
 
