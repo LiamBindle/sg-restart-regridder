@@ -91,9 +91,8 @@ if __name__ == '__main__':
         args['datadir'],
         unresolved_path.format(collection=args['collection']+'.OVERPASS', date=base_date)
     )
-    ds_out.to_netcdf(fname_out)
-
     for varname in ds_out.data_vars:
         ds_out[varname].attrs = ds[varname].attrs
+    ds_out.to_netcdf(fname_out)
 
     print(ds_out)
