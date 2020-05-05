@@ -46,7 +46,7 @@ if __name__ == '__main__':
 
     unresolved_path = 'GCHP.{collection}.{date.year:04d}{date.month:02d}{date.day:02d}_{date.hour:02d}{date.minute:02d}z.nc4'
     files = [os.path.join(args['datadir'], unresolved_path.format(collection=args['collection'], date=date)) for date in pd.date_range(start_date, end_date, freq='30min')]
-    files = [f for f in files if os.path.exists(f)]
+    # files = [f for f in files if os.path.exists(f)]
 
     ds = xr.open_mfdataset(
         files,
