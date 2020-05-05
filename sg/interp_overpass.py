@@ -66,7 +66,7 @@ if __name__ == '__main__':
     solar_time_timedelta_min = solar_time_timedelta_min + base_date.to_datetime64()
     ds.coords['solar_time'] = (['nf', 'Ydim', 'Xdim'], solar_time_timedelta_min)
 
-    ds2 = ds.sel(time=ds.solar_time, method='nearest', tolerance=np.timedelta64(30, 'm'))
+    ds2 = ds.sel(time=ds.solar_time, method='nearest', tolerance=np.timedelta64(15, 'm'))
 
     exit(0)
 
