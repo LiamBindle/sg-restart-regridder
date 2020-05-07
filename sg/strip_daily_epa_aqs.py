@@ -187,10 +187,10 @@ if __name__ == '__main__':
             combine='nested', concat_dim='time',
             data_vars='minimal', coords='minimal',
             compat='override'
-        ).isel(lev=slice(0,3)).squeeze()
+        ).isel(lev=0).squeeze()
         drop_vars = [v for v in ds.data_vars if v not in keep_vars]
         ds = ds.drop(drop_vars)
-        ds = ds.mean(['lev', 'time'])
+        ds = ds.mean(['time'])
 
         sites = new_df.loc[date]
 
