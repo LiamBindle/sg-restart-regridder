@@ -65,7 +65,12 @@ if __name__ == '__main__':
     aqs['Date of Last Change'] = pd.to_datetime(aqs['Date of Last Change'])
 
     # Retain relevant rows
-    aqs = aqs.loc[aqs['State Name'] == 'California']                # Only California
+    keep_states = [
+        'Georgia', 'Alabama', 'Mississippi', 'Tennessee', 'North Carolina', 'South Carolina', 'Kentucky',
+        'Virginia', 'Florida', 'Maryland', 'Delaware'
+    ]
+    aqs = aqs.loc[aqs['State Name']isin(keep_states)]
+    #aqs = aqs.loc[aqs['State Name'] == 'California']                # Only California
     aqs = aqs.loc[aqs['Observation Percent'] >= args.coverage_thresh]   # Only full samples
     aqs = aqs.loc[aqs['Event Type'] == 'None']  # Only samples with no event
 
