@@ -69,7 +69,7 @@ if __name__ == '__main__':
         'Georgia', 'Alabama', 'Mississippi', 'Tennessee', 'North Carolina', 'South Carolina', 'Kentucky',
         'Virginia', 'Florida', 'Maryland', 'Delaware'
     ]
-    aqs = aqs.loc[aqs['State Name'].isin(keep_states)]
+    # aqs = aqs.loc[aqs['State Name'].isin(keep_states)]
     #aqs = aqs.loc[aqs['State Name'] == 'California']                # Only California
     aqs = aqs.loc[aqs['Observation Percent'] >= args.coverage_thresh]   # Only full samples
     aqs = aqs.loc[aqs['Event Type'] == 'None']  # Only samples with no event
@@ -129,7 +129,7 @@ if __name__ == '__main__':
         'GCHP.{collection}.{next_day.year:04d}{next_day.month:02d}{next_day.day:02d}_0730z.nc4',
     ]
     if args.var in ['SpeciesConc_NO2', 'SpeciesConc_O3', 'SpeciesConc_SO2', 'SpeciesConc_CO']:
-        collection='SpeciesConc'
+        collection='TROPOMI_Species' #'SpeciesConc'
     elif args.var == 'PM25':
         collection = 'AerosolMass'
     else:
