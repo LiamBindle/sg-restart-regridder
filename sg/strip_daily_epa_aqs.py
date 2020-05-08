@@ -129,7 +129,7 @@ if __name__ == '__main__':
         'GCHP.{collection}.{next_day.year:04d}{next_day.month:02d}{next_day.day:02d}_0730z.nc4',
     ]
     if args.var in ['SpeciesConc_NO2', 'SpeciesConc_O3', 'SpeciesConc_SO2', 'SpeciesConc_CO']:
-        collection='TROPOMI_Species' #'SpeciesConc'
+        collection='SpeciesConc'
     elif args.var == 'PM25':
         collection = 'AerosolMass'
     else:
