@@ -97,7 +97,7 @@ if __name__ == '__main__':
 
     ds_out = ds_out.expand_dims('time', 0)
     ds_out = ds_out.assign_coords({'time': [base_date]})
-    ds_out = ds_out.transpose(['time', 'lev', 'nf', 'Ydim', 'Xdim'])
+    ds_out = ds_out.transpose('time', 'lev', 'nf', 'Ydim', 'Xdim')
 
 
     encoding={}
