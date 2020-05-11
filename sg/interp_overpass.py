@@ -90,6 +90,9 @@ if __name__ == '__main__':
     drop_vars = [v for v in ds.data_vars if not set(ds.overpass_time.dims).issubset(set(ds[v].dims))]
     ds = ds.drop(drop_vars)
 
+    ds = ds.expand_dims('time', 0)
+    ds = ds.set_coords({'time': [pd.to_datetime(args['date'])]})
+
     floor = ds.sel(time=ds.overpass_time_floor)
     ceil = ds.sel(time=ds.overpass_time_ceil)
 
@@ -101,6 +104,6 @@ if __name__ == '__main__':
     )
     for varname in ds_out.data_vars:
         ds_out[varname].attrs = ds[varname].attrs
-    ds_out.to_netcdf(fname_out)
+    ds_out.to_netcdf(fname_out, unlimited_dims=['time'])
 
     print(ds_out)
