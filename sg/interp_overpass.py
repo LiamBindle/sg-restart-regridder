@@ -90,12 +90,12 @@ if __name__ == '__main__':
     drop_vars = [v for v in ds.data_vars if not set(ds.overpass_time.dims).issubset(set(ds[v].dims))]
     ds = ds.drop(drop_vars)
 
-    floor = ds.sel(time=ds.overpass_time_floor)
-    ceil = ds.sel(time=ds.overpass_time_ceil)
+    floor = ds.sel(time=ds.overpass_time_floor, method='nearest')
+    ceil = ds.sel(time=ds.overpass_time_ceil, method='nearest')
 
     ds_out = floor * ds.overpass_time_floor_weight + ceil * ds.overpass_time_ceil_weight
 
-    ds_out = ds_out.drop_dims([
+    ds_out = ds_out.drop([
         'ncontact',
         'overpass_time',
         'overpass_time_floor',
