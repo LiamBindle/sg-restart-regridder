@@ -97,6 +97,7 @@ if __name__ == '__main__':
 
     ds_out = ds_out.expand_dims('time', 0)
     ds_out = ds_out.assign_coords({'time': [base_date]})
+    ds_out = ds_out.transpose(['time', 'lev', 'nf', 'Ydim', 'Xdim'])
 
 
     encoding={}
@@ -105,7 +106,7 @@ if __name__ == '__main__':
             'long_name': ds[v].attrs['long_name'],
             'units': ds[v].attrs['units'],
         }
-        ds_out[v].encoding['coordinates'] = None
+        ds_out[v].encoding['coordinates'] = "time nf lev Ydim Xdim"
 
     fname_out = os.path.join(
         args['datadir'],
