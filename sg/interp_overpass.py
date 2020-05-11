@@ -95,8 +95,8 @@ if __name__ == '__main__':
 
     ds_out = floor * ds.overpass_time_floor_weight + ceil * ds.overpass_time_ceil_weight
 
-    ds = ds.expand_dims('time', 0)
-    ds = ds.set_coords({'time': [base_date]})
+    ds_out = ds_out.expand_dims('time', 0)
+    ds_out = ds_out.set_coords({'time': [base_date]})
 
     fname_out = os.path.join(
         args['datadir'],
