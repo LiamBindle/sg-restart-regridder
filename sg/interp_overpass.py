@@ -98,6 +98,8 @@ if __name__ == '__main__':
     ds_out = ds_out.expand_dims('time', 0)
     ds_out = ds_out.assign_coords({'time': [base_date]})
 
+
+    encoding={}
     for v in ds_out.data_vars:
         ds_out[v].attrs = {
             'long_name': ds[v].attrs['long_name'],
@@ -110,6 +112,6 @@ if __name__ == '__main__':
     )
     for varname in ds_out.data_vars:
         ds_out[varname].attrs = ds[varname].attrs
-    ds_out.to_netcdf(fname_out, unlimited_dims=['time'])
+    ds_out.to_netcdf(fname_out, unlimited_dims=['time'], encoding={'coordinates': None})
 
     print(ds_out)
