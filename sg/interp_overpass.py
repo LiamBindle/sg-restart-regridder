@@ -99,7 +99,10 @@ if __name__ == '__main__':
     ds_out = ds_out.assign_coords({'time': [base_date]})
 
     for v in ds_out.data_vars:
-        ds_out[v].attrs = ds[v].attrs
+        ds_out[v].attrs = {
+            'long_name': ds[v].attrs['long_name'],
+            'units': ds[v].attrs['units'],
+        }
 
     fname_out = os.path.join(
         args['datadir'],
