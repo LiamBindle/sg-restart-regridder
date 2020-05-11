@@ -98,6 +98,9 @@ if __name__ == '__main__':
     ds_out = ds_out.expand_dims('time', 0)
     ds_out = ds_out.assign_coords({'time': [base_date]})
 
+    for v in ds_out.data_vars:
+        ds_out[v].attrs = ds[v].attrs
+
     fname_out = os.path.join(
         args['datadir'],
         unresolved_path.format(collection=args['collection']+'.OVERPASS', date=base_date)
