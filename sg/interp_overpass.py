@@ -105,6 +105,7 @@ if __name__ == '__main__':
             'long_name': ds[v].attrs['long_name'],
             'units': ds[v].attrs['units'],
         }
+        encoding['var'] = {'coordaintes': None}
 
     fname_out = os.path.join(
         args['datadir'],
@@ -112,6 +113,6 @@ if __name__ == '__main__':
     )
     for varname in ds_out.data_vars:
         ds_out[varname].attrs = ds[varname].attrs
-    ds_out.to_netcdf(fname_out, unlimited_dims=['time'], encoding={'coordinates': None})
+    ds_out.to_netcdf(fname_out, unlimited_dims=['time'], encoding=encoding)
 
     print(ds_out)
