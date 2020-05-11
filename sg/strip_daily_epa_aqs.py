@@ -41,9 +41,6 @@ if __name__ == '__main__':
     parser.add_argument('--aqs-year',
                         type=int,
                         default=2016)
-    parser.add_argument('--month-mean',
-                        type=str,
-                        default=None)
     parser.add_argument('-o',
                         type=str,
                         default='daily_aqs_{species}_comparison.csv')
@@ -169,11 +166,6 @@ if __name__ == '__main__':
     else:
         keep_vars = [args.var]
 
-    if args.month_mean is not None:
-        month_mean = xr.open_dataset(args.month_mean).isel(lev=0).squeeze()
-    else:
-        month_mean = None
-
     # Loop through dates
     for date, new_df in tqdm(aqs.groupby(level=0), desc='Date'):
         rpaths = [os.path.join(args.datadir, fpath.format(date=date, next_day=date + pd.Timedelta(days=1), collection=collection)) for fpath in diag_fpath]
@@ -222,15 +214,8 @@ if __name__ == '__main__':
         aqs_new.at[new_df.index, 'Simulated Mean'] = simulated_means[args.var]
 
         if calculate_corrected_NO2:
-            correction_denom = np.array([
-                scale_factors['SpeciesConc_NO2'] * (month_mean['SpeciesConc_NO2'][nf, Ydim, Xdim] +
-                month_mean['SpeciesConc_R4N2'][nf, Ydim, Xdim] +
-                0.95 * month_mean['SpeciesConc_PAN'][nf, Ydim, Xdim] +
-                0.15 * month_mean['SpeciesConc_HNO3'][nf, Ydim, Xdim])
-
-                for nf, Ydim, Xdim in zip(*slices)
-            ])
-            corrected = aqs_new.loc[new_df.index]['Arithmetic Mean'] / correction_denom
+            cf = simulated_means['SpeciesConc_NO2'] / (simulated_means['SpeciesConc_NO2'] + simulated_means['SpeciesConc_R4N2'] + 0.95 * simulated_means['SpeciesConc_PAN'] + 0.15 * simulated_means['SpeciesConc_HNO3'])
+            corrected = aqs_new.loc[new_df.index]['Arithmetic Mean'] * cf
             aqs_new.at[new_df.index, 'Corrected Arithmetic Mean'] = corrected
 
         ds.close()
