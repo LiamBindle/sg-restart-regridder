@@ -90,14 +90,13 @@ if __name__ == '__main__':
     drop_vars = [v for v in ds.data_vars if not set(ds.overpass_time.dims).issubset(set(ds[v].dims))]
     ds = ds.drop(drop_vars)
 
-    ds = ds.drop_dims(['time'])
-    ds = ds.expand_dims('time', 0)
-    ds = ds.set_coords({'time': [pd.to_datetime(args['date'])]})
-
     floor = ds.sel(time=ds.overpass_time_floor)
     ceil = ds.sel(time=ds.overpass_time_ceil)
 
     ds_out = floor * ds.overpass_time_floor_weight + ceil * ds.overpass_time_ceil_weight
+
+    ds = ds.expand_dims('time', 0)
+    ds = ds.set_coords({'time': [base_date]})
 
     fname_out = os.path.join(
         args['datadir'],
