@@ -105,7 +105,7 @@ if __name__ == '__main__':
             'long_name': ds[v].attrs['long_name'],
             'units': ds[v].attrs['units'],
         }
-        ds_out[v].encoding = None
+        ds_out[v].encoding['coordinates'] = None
 
     fname_out = os.path.join(
         args['datadir'],
