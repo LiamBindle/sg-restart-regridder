@@ -88,6 +88,7 @@ if __name__ == '__main__':
     ds.coords['overpass_time_ceil_weight'] = (['nf', 'Ydim', 'Xdim'], ceil_weight)
 
     drop_vars = [v for v in ds.data_vars if not set(ds.overpass_time.dims).issubset(set(ds[v].dims))]
+    drop_vars.append('time')
     ds = ds.drop(drop_vars)
 
     ds = ds.expand_dims('time', 0)
