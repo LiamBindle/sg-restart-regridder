@@ -107,15 +107,6 @@ if __name__ == '__main__':
     ds_out = ds_out.assign_coords({'time': [base_date]})
     ds_out = ds_out.transpose('time', 'lev', 'nf', 'Ydim', 'Xdim')
 
-
-    encoding={}
-    for v in ds_out.data_vars:
-        ds_out[v].attrs = {
-            'long_name': ds[v].attrs['long_name'],
-            'units': ds[v].attrs['units'],
-        }
-        ds_out[v].encoding['coordinates'] = "time nf lev Ydim Xdim"
-
     fname_out = os.path.join(
         args['datadir'],
         unresolved_path.format(collection=args['collection']+'.OVERPASS', date=base_date)
