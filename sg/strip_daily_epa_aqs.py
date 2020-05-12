@@ -154,6 +154,9 @@ if __name__ == '__main__':
     # Make the new table
     aqs_new = aqs.copy()
     aqs_new['Simulated Mean'] = np.nan
+    aqs_new['Simulation grid-box nf'] = np.nan
+    aqs_new['Simulation grid-box Ydim'] = np.nan
+    aqs_new['Simulation grid-box Xdim'] = np.nan
     if args.var in ['SpeciesConc_NO2']:
         aqs_new['Corrected Arithmetic Mean'] = np.nan
         calculate_corrected_NO2 = True
@@ -212,6 +215,9 @@ if __name__ == '__main__':
         }
 
         aqs_new.at[new_df.index, 'Simulated Mean'] = simulated_means[args.var]
+        aqs_new.at[new_df.index, 'Simulation grid-box nf'] = slices[0]
+        aqs_new.at[new_df.index, 'Simulation grid-box Ydim'] = slices[1]
+        aqs_new.at[new_df.index, 'Simulation grid-box Xdim'] = slices[2]
 
         if calculate_corrected_NO2:
             cf = simulated_means['SpeciesConc_NO2'] / (simulated_means['SpeciesConc_NO2'] + simulated_means['SpeciesConc_R4N2'] + 0.95 * simulated_means['SpeciesConc_PAN'] + 0.15 * simulated_means['SpeciesConc_HNO3'])
