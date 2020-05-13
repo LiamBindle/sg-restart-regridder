@@ -59,32 +59,38 @@ if __name__ == '__main__':
     pbar = tqdm(total=npixels, desc='Observations')
     def exec_loop(pixel_idx):
     # for pixel_idx in tqdm(range(npixels), desc='Observation'):
-        ds_pixel = ds_daily_tropomi.isel(dim2=pixel_idx)
-        pixel_xc = ds_pixel['LON_CENTER'].squeeze().item()
-        pixel_yc = ds_pixel['LAT_CENTER'].squeeze().item()
-        pixel_xy = np.array([ds_pixel['LON_CORNERS'].squeeze().values, ds_pixel['LAT_CORNERS'].squeeze().values]).transpose()
+        try:
+            ds_pixel = ds_daily_tropomi.isel(dim2=pixel_idx)
+            pixel_xc = ds_pixel['LON_CENTER'].squeeze().item()
+            pixel_yc = ds_pixel['LAT_CENTER'].squeeze().item()
+            pixel_xy = np.array([ds_pixel['LON_CORNERS'].squeeze().values, ds_pixel['LAT_CORNERS'].squeeze().values]).transpose()
 
-        distances = central_angle(pixel_xc, pixel_yc, gb_centers_x, gb_centers_y).values
-        closest_indexes = np.argpartition(distances.flatten(), 4)[:4]
-        closest_indexes = np.unravel_index(closest_indexes, distances.shape)
+            distances = central_angle(pixel_xc, pixel_yc, gb_centers_x, gb_centers_y).values
+            closest_indexes = np.argpartition(distances.flatten(), 4)[:4]
+            closest_indexes = np.unravel_index(closest_indexes, distances.shape)
 
-        # proj = pyproj.Proj(f'+proj=laea +lat_0={pixel_yc} +lon_0={pixel_xc} +units=m')
-        # proj = pyproj.Proj(f'+proj=gnom +lat_0={pixel_yc} +lon_0={pixel_xc}')
+            # proj = pyproj.Proj(f'+proj=laea +lat_0={pixel_yc} +lon_0={pixel_xc} +units=m')
+            # proj = pyproj.Proj(f'+proj=gnom +lat_0={pixel_yc} +lon_0={pixel_xc}')
 
-        nearby_gb_xy = ds_grid_boxes['grid_boxes'].values[closest_indexes]
-        # nearby_gb_xy = np.transpose(proj(nearby_gb_xy[..., 0], nearby_gb_xy[..., 1]))
-        nearby_boxes = [shapely.geometry.Polygon(xy) for xy in nearby_gb_xy]
+            nearby_gb_xy = ds_grid_boxes['grid_boxes'].values[closest_indexes]
+            # nearby_gb_xy = np.transpose(proj(nearby_gb_xy[..., 0], nearby_gb_xy[..., 1]))
+            nearby_boxes = [shapely.geometry.Polygon(xy) for xy in nearby_gb_xy]
 
-        # pixel_xy = np.transpose(proj(pixel_xy[..., 0], pixel_xy[..., 1]))
-        # pixel_box = shapely.geometry.Polygon(pixel_xy)
+            # pixel_xy = np.transpose(proj(pixel_xy[..., 0], pixel_xy[..., 1]))
+            # pixel_box = shapely.geometry.Polygon(pixel_xy)
 
-        pixel_center = shapely.geometry.Point(pixel_xc, pixel_yc)
-        nearby_containing_pixel = np.argmax([grid_box.contains(pixel_center) for grid_box in nearby_boxes])
+            pixel_center = shapely.geometry.Point(pixel_xc, pixel_yc)
+            nearby_contains = [grid_box.contains(pixel_center) for grid_box in nearby_boxes]
+            nearby_containing_pixel = np.argmax(nearby_contains)
+            if not nearby_contains[nearby_containing_pixel]:
+                raise ValueError('No nearby boxes contained the pixel\'s center')
 
-        containing_grid_box = tuple([dim_indexes[nearby_containing_pixel] for dim_indexes in closest_indexes])
+            containing_grid_box = tuple([dim_indexes[nearby_containing_pixel] for dim_indexes in closest_indexes])
 
-        observations_sum[containing_grid_box] += ds_pixel['TROPOMI_NO2_molec_per_m2'].item()
-        observations_count[containing_grid_box] += 1
+            observations_sum[containing_grid_box] += ds_pixel['TROPOMI_NO2_molec_per_m2'].item()
+            observations_count[containing_grid_box] += 1
+        except Exception as e:
+            print(f'Observation {pixel_idx} threw an exception: \n{e.__str__()}\nContinuing anyways...')
 
         pbar.update()
     pool = mp.Pool(2)
