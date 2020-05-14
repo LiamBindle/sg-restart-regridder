@@ -5,10 +5,12 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+from sg.tropospheric_column import compute_no2_column
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--daily_gchp',
+    parser.add_argument('--gchp_data',
                         type=str,
                         required=True),
     parser.add_argument('--daily_tropomi',
@@ -16,11 +18,17 @@ if __name__ == '__main__':
                         required=True)
     args = parser.parse_args()
 
-    ds_gchp = xr.open_dataset(args.daily_gchp)
+    # ds_gchp = xr.open_dataset(args.daily_gchp)
     ds_tropomi = xr.open_dataset(args.daily_tropomi)
 
     date = re.search('201[0-9][0-9]{2}[0-9]{2}', args.daily_tropomi).group(0)
     date = pd.to_datetime(date, format='%Y%m%d')
+
+    gchp_species = xr.open_dataset(f"{args.gchp_data}/GCHP.TROPOMI_Species.OVERPASS.{date.strftime('%Y%m%d')}_1330z.nc4")
+    gchp_metc = xr.open_dataset(f"{args.gchp_data}/GCHP.TROPOMI_MetC.OVERPASS.{date.strftime('%Y%m%d')}_1330z.nc4")
+    gchp_mete = xr.open_dataset(f"{args.gchp_data}/GCHP.TROPOMI_MetE.OVERPASS.{date.strftime('%Y%m%d')}_1330z.nc4")
+
+    ds_gchp = compute_no2_column(gchp_species, gchp_metc, gchp_mete)
 
     tropomi_no2 = ds_tropomi['TROPOMI_NO2']
     gchp_no2 = ds_gchp['TroposphericColumn_NO2']
