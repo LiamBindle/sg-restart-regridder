@@ -24,5 +24,5 @@ if __name__ == '__main__':
         join='override'
     )
 
-    ds = ds.mean(dims=args.dim)
+    ds = ds.mean(dim=args.dim)
     ds.to_netcdf(args.o)
