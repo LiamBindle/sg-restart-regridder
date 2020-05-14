@@ -6,8 +6,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('input_data',
                         nargs='+',
-                        type=str,
-                        required=True),
+                        type=str,),
     parser.add_argument('--dim',
                         type=str,
                         required=True)
