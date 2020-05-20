@@ -87,7 +87,7 @@ if __name__ == '__main__':
 
             containing_grid_box = tuple([dim_indexes[nearby_containing_pixel] for dim_indexes in closest_indexes])
 
-            observations_sum[containing_grid_box] += ds_pixel['TROPOMI_NO2_molec_per_m2'].item()
+            observations_sum[containing_grid_box] += ds_pixel['TROPOMI_NO2_molec_per_cm2'].item()
             observations_count[containing_grid_box] += 1
         except Exception as e:
             print(f'Observation {pixel_idx} threw an exception: \n{e.__str__()}\nContinuing anyways...')
@@ -104,7 +104,10 @@ if __name__ == '__main__':
     np.seterr(**old_settings)
 
     ds_out = xr.Dataset(
-        data_vars={'TROPOMI_NO2': (('date', 'nf', 'Ydim', 'Xdim'), observations[np.newaxis, ...])},
+        data_vars={
+            'TROPOMI_NO2': (('date', 'nf', 'Ydim', 'Xdim'), observations[np.newaxis, ...]),
+            'OBS_COUNTS': (('date', 'nf', 'Ydim', 'Xdim'), observations_count[np.newaxis, ...]),
+        },
         coords={
             'date': [date],
             **{coord: ds_grid_boxes.coords[coord] for coord in ['nf', 'Ydim', 'Xdim']}
