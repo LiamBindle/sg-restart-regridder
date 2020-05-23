@@ -12,18 +12,27 @@ if __name__ == '__main__':
                         required=True)
     parser.add_argument('--weekly',
                         action='store_true')
+    parser.add_argument('--missing_time',
+                        action='store_true')
     parser.add_argument('-o',
                         type=str,
                         required=True)
     args = parser.parse_args()
 
+    if args.missing_time:
+        extra_mfdataset_kwargs = dict()
+    else:
+        extra_mfdataset_kwargs = dict(
+            data_vars='minimal',
+            coords='minimal',
+            join='override',
+        )
+
     ds = xr.open_mfdataset(
         args.input_data,
         combine='nested',
         concat_dim=args.dim,
-        data_vars='minimal',
-        coords='minimal',
-        join='override',
+        **extra_mfdataset_kwargs
     )
 
     if args.weekly:
