@@ -24,7 +24,6 @@ if __name__ == '__main__':
         data_vars='minimal',
         coords='minimal',
         join='override',
-        compat='override'
     )
 
     if args.weekly:
@@ -35,6 +34,5 @@ if __name__ == '__main__':
 
         ds = xr.concat([week1, week2, week3, week4], dim=args.dim)
     else:
-        print(ds)
         ds = ds.mean(dim=args.dim)
     ds.to_netcdf(args.o)
