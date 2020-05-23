@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     ds_gchp = xr.open_dataset(f"{args.gchp_data}/GCHP_NO2_columns.{date.strftime('%Y%m%d')}.nc")
 
-    tropomi_no2 = ds_tropomi['TROPOMI_NO2']
+    tropomi_no2 = ds_tropomi['TROPOMI_NO2_molec_per_cm2']
     gchp_no2 = ds_gchp['TroposphericColumn_NO2']
 
 
