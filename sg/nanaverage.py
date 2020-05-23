@@ -23,7 +23,8 @@ if __name__ == '__main__':
         concat_dim=args.dim,
         data_vars='minimal',
         coords='minimal',
-        join='override'
+        join='override',
+        compat='override'
     )
 
     if args.weekly:
