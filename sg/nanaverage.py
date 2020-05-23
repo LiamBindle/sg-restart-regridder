@@ -27,10 +27,10 @@ if __name__ == '__main__':
     )
 
     if args.weekly:
-        week1 = ds.isel(**{args.dim: slice(0, 7)})
-        week2 = ds.isel(**{args.dim: slice(7, 14)})
-        week3 = ds.isel(**{args.dim: slice(14, 21)})
-        week4 = ds.isel(**{args.dim: slice(21, 28)})
+        week1 = ds.isel(**{args.dim: slice(0, 7)}).mean(dim=args.dim)
+        week2 = ds.isel(**{args.dim: slice(7, 14)}).mean(dim=args.dim)
+        week3 = ds.isel(**{args.dim: slice(14, 21)}).mean(dim=args.dim)
+        week4 = ds.isel(**{args.dim: slice(21, 28)}).mean(dim=args.dim)
 
         ds = xr.concat([week1, week2, week3, week4], dim=args.dim)
     else:
