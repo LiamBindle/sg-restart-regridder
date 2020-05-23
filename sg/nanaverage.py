@@ -10,6 +10,8 @@ if __name__ == '__main__':
     parser.add_argument('--dim',
                         type=str,
                         required=True)
+    parser.add_argument('--weekly',
+                        action='store_true')
     parser.add_argument('-o',
                         type=str,
                         required=True)
@@ -24,5 +26,13 @@ if __name__ == '__main__':
         join='override'
     )
 
-    ds = ds.mean(dim=args.dim)
+    if args.weekly:
+        week1 = ds.isel(**{args.dim: slice(0, 7)})
+        week2 = ds.isel(**{args.dim: slice(7, 14)})
+        week3 = ds.isel(**{args.dim: slice(14, 21)})
+        week4 = ds.isel(**{args.dim: slice(21, 28)})
+
+        ds = xr.concat([week1, week2, week3, week4], dim=args.dim)
+    else:
+        ds = ds.mean(dim=args.dim)
     ds.to_netcdf(args.o)
