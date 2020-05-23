@@ -5,9 +5,6 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from sg.tropospheric_column import compute_no2_column
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--gchp_data',
@@ -18,7 +15,6 @@ if __name__ == '__main__':
                         required=True)
     args = parser.parse_args()
 
-    # ds_gchp = xr.open_dataset(args.daily_gchp)
     ds_tropomi = xr.open_dataset(args.daily_tropomi)
 
     date = re.search('201[0-9][0-9]{2}[0-9]{2}', args.daily_tropomi).group(0)
@@ -39,8 +35,8 @@ if __name__ == '__main__':
     gchp_no2 = xr.apply_ufunc(
         mask_where_tropomi_is_nan,
         gchp_no2, tropomi_no2,
-        input_core_dims=[['nf', 'Ydim', 'Xdim'], ['nf', 'Ydim', 'Xdim']],
-        output_core_dims=[['nf', 'Ydim', 'Xdim']],
+        input_core_dims=[['i', 'j'], ['i', 'j']],
+        output_core_dims=[['i', 'j']],
         vectorize=True
     )
 
