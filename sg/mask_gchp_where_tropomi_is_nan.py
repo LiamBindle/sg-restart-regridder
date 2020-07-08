@@ -35,8 +35,8 @@ if __name__ == '__main__':
     gchp_no2 = xr.apply_ufunc(
         mask_where_tropomi_is_nan,
         gchp_no2, tropomi_no2,
-        input_core_dims=[['i', 'j'], ['i', 'j']],
-        output_core_dims=[['i', 'j']],
+        input_core_dims=[['Ydim', 'Xdim'], ['Ydim', 'Xdim']],
+        output_core_dims=[['Ydim', 'Xdim']],
         vectorize=True
     )
 
