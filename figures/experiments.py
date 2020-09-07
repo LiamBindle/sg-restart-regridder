@@ -14,15 +14,37 @@ import sg.grids
 import sg.plot
 
 import tqdm
+import cartopy
 
-def draw_target_face_outline(ax: plt.Axes, sf, tlat, tlon, color):
-    grid = sg.grids.StretchedGrid(24, sf, tlat, tlon)
-    xx = grid.xe(5)
-    yy = grid.ye(5)
+
+import pandas as pd
+df = pd.DataFrame()
+n = 1
+def draw_target_face_outline(ax: plt.Axes, sf, tlat, tlon, color, face=5, is_tough=False, line=None):
+    global n, df
+    grid = sg.grids.StretchedGrid(12, sf, tlat, tlon)
+    xx = grid.xe(face)
+    yy = grid.ye(face)
     xx_majors = [xx[0, :], xx[-1, :], xx[:, 0], xx[:, -1]]
     yy_majors = [yy[0, :], yy[-1, :], yy[:, 0], yy[:, -1]]
+    if line is not None:
+        xx_majors = [xx_majors[line]]
+        yy_majors = [yy_majors[line]]
     for xm, ym in zip(xx_majors, yy_majors):
-        ax.plot(xm, ym, transform=ccrs.PlateCarree(), color=color, linewidth=0.8, linestyle='-')
+        if is_tough:
+            xm = xm % 360
+        line = shapely.geometry.LineString(np.moveaxis([xm, ym], 0, -1))
+        ax.add_feature(
+            cartopy.feature.ShapelyFeature([line], crs=ccrs.PlateCarree()),
+            facecolor='none',
+            edgecolor=color,
+            linewidth=0.8,
+        )
+        df[f'x:{n}'] = xm
+        df[f'y:{n}'] = ym
+        print(f'{list(xm)},')
+        print(f'{list(ym)},')
+        n = n + 1
 
 
 if __name__ == '__main__':
@@ -31,28 +53,38 @@ if __name__ == '__main__':
     dtfal = 4*np.pi/180
 
     grids = [
-        {'sf': 2, 'tlat': 35, 'tlon': 264, 'color': cmap(0)},
-        {'sf': 3.6, 'tlat': 38, 'tlon': 252, 'color': cmap(0)},
-        {'sf': 6.8, 'tlat': 37, 'tlon': 244, 'color': cmap(0)},
-        {'sf': 12.5, 'tlat': 36, 'tlon': 241, 'color': cmap(0)},
+        # {'sf': 2, 'tlat': 35, 'tlon': 264, 'color': cmap(0)},
+        # {'sf': 3.6, 'tlat': 38, 'tlon': 252, 'color': cmap(0)},
+        # {'sf': 6.8, 'tlat': 37, 'tlon': 244, 'color': cmap(0)},
+        # {'sf': 12.5, 'tlat': 36, 'tlon': 241, 'color': cmap(0)},
+        #
+        # {'sf': 2, 'tlat': 48, 'tlon': 14, 'color': cmap(1)},
+        # {'sf': 3.4, 'tlat': 47, 'tlon': 5, 'color': cmap(1)},
+        # {'sf': 6.8, 'tlat': 42.5, 'tlon': 12.5, 'color': cmap(1)},
+        # {'sf': 15, 'tlat': 45, 'tlon': 10.5, 'color': cmap(1)},
+        #
+        # {'sf': 2.8, 'tlat': 21.5, 'tlon': 79, 'color': cmap(2)},
+        # {'sf': 6, 'tlat': 25, 'tlon': 81, 'color': cmap(2)},
+        # {'sf': 14, 'tlat': 27.5, 'tlon': 78.5, 'color': cmap(2)},
+        #
+        # {'sf': 2.7, 'tlat': 5, 'tlon': 111, 'color': cmap(3)},
+        # {'sf': 4, 'tlat': 0, 'tlon': 108, 'color': cmap(3)},
+        # {'sf': 7, 'tlat': -5, 'tlon': 110, 'color': cmap(3)},
+        # {'sf': 15, 'tlat': -7, 'tlon': 108, 'color': cmap(3)},
 
-        {'sf': 2, 'tlat': 48, 'tlon': 14, 'color': cmap(1)},
-        {'sf': 3.4, 'tlat': 47, 'tlon': 5, 'color': cmap(1)},
-        {'sf': 6.8, 'tlat': 42.5, 'tlon': 12.5, 'color': cmap(1)},
-        {'sf': 15, 'tlat': 45, 'tlon': 10.5, 'color': cmap(1)},
-
-        {'sf': 2.8, 'tlat': 21.5, 'tlon': 79, 'color': cmap(2)},
-        {'sf': 6, 'tlat': 25, 'tlon': 81, 'color': cmap(2)},
-        {'sf': 14, 'tlat': 27.5, 'tlon': 78.5, 'color': cmap(2)},
-
-        {'sf': 2.7, 'tlat': 5, 'tlon': 111, 'color': cmap(3)},
-        {'sf': 4, 'tlat': 0, 'tlon': 108, 'color': cmap(3)},
-        {'sf': 7, 'tlat': -5, 'tlon': 110, 'color': cmap(3)},
-        {'sf': 15, 'tlat': -7, 'tlon': 108, 'color': cmap(3)},
+        # {'sf': 5, 'tlat': 40, 'tlon': 248, 'color': cmap(3)},
+        # {'sf': 1, 'tlat': -90, 'tlon': 170, 'color': cmap(1)},
+        {'sf': 3, 'tlat': 36, 'tlon': 261, 'color': cmap(1)},
+        #
+        {'sf': 1.0, 'tlat': -90, 'tlon': 170, 'color': cmap(0)},
+        #
+        # # {'sf': 8, 'tlat': 37, 'tlon': 242, 'color': cmap(3)},
+        #
+        {'sf': 10, 'tlat': 37.2, 'tlon': 240.5, 'color': cmap(2)},
     ]
 
 
-    plt.figure(figsize=figures.one_col_figsize(2/1))
+    plt.figure(figsize=figures.one_col_figsize(1.6))
     ax = plt.axes(projection=ccrs.EqualEarth())
     ax.set_global()
 
@@ -64,9 +96,9 @@ if __name__ == '__main__':
 
 
 
-    ax.add_feature(cfeature.OCEAN, linewidth=0)
-    ax.add_feature(cfeature.LAND, facecolor='none', linewidth=0)
-    ax.add_feature(cfeature.LAKES, linewidth=0)
+    ax.add_feature(cfeature.OCEAN, linewidth=0, color='#f0f0f0')
+    ax.add_feature(cfeature.LAND, facecolor='none', linewidth=0, color='#bdbdbd')
+    ax.add_feature(cfeature.LAKES, linewidth=0, color='#f0f0f0')
     #ax.add_geometries(exclude_US, linewidth=0.2, edgecolor='gray', facecolor='none', crs=ccrs.Geodetic())
     # ax.add_feature(cfeature.BORDERS, linewidth=0.1, edgecolor='gray')
     # ax.add_feature(cfeature.STATES, linewidth=0.05, edgecolor='gray')
@@ -77,28 +109,64 @@ if __name__ == '__main__':
 
     custom_lines = [Line2D([0], [0], color=cmap(0), lw=1.5),
                     Line2D([0], [0], color=cmap(1), lw=1.5),
-                    Line2D([0], [0], color=cmap(2), lw=1.5),
-                    Line2D([0], [0], color=cmap(3), lw=1.5)]
+                    Line2D([0], [0], color=cmap(2), lw=1.5),]
 
-    for g in tqdm.tqdm(grids):
-        draw_target_face_outline(ax, **g)
+
+    draw_target_face_outline(ax, **grids[0], face=0)
+    draw_target_face_outline(ax, **grids[0], face=3, line=0, is_tough=True)
+    draw_target_face_outline(ax, **grids[0], face=3, line=1)
+    draw_target_face_outline(ax, **grids[0], face=3, line=2)
+    draw_target_face_outline(ax, **grids[0], face=3, line=3)
+    draw_target_face_outline(ax, **grids[0], face=4)
+    draw_target_face_outline(ax, **grids[0], face=1, line=0)
+    draw_target_face_outline(ax, **grids[0], face=1, line=1, is_tough=True)
+    # draw_target_face_outline(ax, **grids[0], face=1, line=0)
+    # draw_target_face_outline(ax, **grids[0], face=1, line=1)
+    # draw_target_face_outline(ax, **grids[0], face=1, line=3)
+    # draw_target_face_outline(ax, **grids[0], face=3, line=2, is_tough=True)
+    # draw_target_face_outline(ax, **grids[0], face=3, line=3, is_tough=True)
+    # draw_target_face_outline(ax, **grids[0], face=4, line=2)
+    # draw_target_face_outline(ax, **grids[0], face=4, line=3)
+    # draw_target_face_outline(ax, **grids[0], face=4, line=0)
+
+    # draw_target_face_outline(ax, **grids[0], face=1, is_tough=False)
+    # draw_target_face_outline(ax, **grids[0], face=0)
+    # draw_target_face_outline(ax, **grids[0], face=4)
+    # draw_target_face_outline(ax, **grids[0], face=2, line=3)
+    #
+    draw_target_face_outline(ax, **grids[1], face=1, is_tough=True)
+    draw_target_face_outline(ax, **grids[1], face=3, is_tough=True)
+    draw_target_face_outline(ax, **grids[1], face=4)
+    draw_target_face_outline(ax, **grids[1], face=0)
+    #
+    draw_target_face_outline(ax, **grids[2])
+    draw_target_face_outline(ax, **grids[2], face=1)
+    draw_target_face_outline(ax, **grids[2], face=0)
+    draw_target_face_outline(ax, **grids[2], face=4)
+    draw_target_face_outline(ax, **grids[2], face=2)
+
 
     legend = ax.legend(
-        custom_lines, ['NA1--4', 'EU1--4', 'IN1--3', 'SE1--4'],
-        loc='lower center', mode='expand', ncol=4,
+        custom_lines, ['Cubed-sphere grids', 'C180e-US', 'C900e-CA'],
+        loc='upper center', mode='expand', ncol=3,
         handlelength=1, handletextpad=0.3, framealpha=1, prop={'size': 'small'}, columnspacing=3,
-        bbox_to_anchor=(0, 0.1, 1, 0.1),
+        bbox_to_anchor=(0, -0.15, 1, 0.1),
         borderpad=0.6, borderaxespad=0
     )
     legend.get_frame().set_linewidth(0.2)
     legend.get_frame().set_edgecolor('gray')
 
+    # plt.scatter([-84.3880], [33.7490], transform=ccrs.PlateCarree(), color='k', s=0.5)
+
 
     plt.tight_layout()
     # plt.show()
 
+    # figures.display_figure_instead=True
     figures.savefig(plt.gcf(), 'sg-experiments.png', pad_inches=0.01)
-    #plt.savefig('/home/liam/Copernicus_LaTeX_Package/figures/sg-experiments.png')
+    # plt.savefig('/home/liam/Copernicus_LaTeX_Package/figures/sg-experiments.png')
 
+
+df.T.to_csv('foo.csv')
 
 
