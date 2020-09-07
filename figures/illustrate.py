@@ -94,7 +94,7 @@ def grid_box_length(ax, xx_sg, yy_sg, xx_cs, yy_cs, **kwargs):
         boxes = [shapely.geometry.Polygon(xy) for xy in boxes]
 
         cmap = plt.get_cmap('RdBu_r')
-        norm = plt.Normalize(vmin=-4, vmax=4)
+        norm = plt.Normalize(-2.585, 2.585)
         for box, value in zip(boxes, np.log2(dl).flatten()):
             c = cmap(norm(value))
             ax.add_geometries([box], gnomonic, edgecolor='None', facecolor=c, linewidth=0)
@@ -123,7 +123,7 @@ if __name__ == '__main__':
         ax_front.outline_patch.set_linewidth(0.2)
         ax_back.outline_patch.set_linewidth(0.2)
 
-        ax_front.set_title(f'SF: {grid.sf}')
+        ax_front.set_title(f'$S={grid.sf}$')
 
         for face in range(6):
             stepsize = 2
@@ -158,12 +158,14 @@ if __name__ == '__main__':
     cb = matplotlib.colorbar.ColorbarBase(
         ax=cbar_ax,
         cmap=plt.get_cmap('RdBu_r'),
-        norm=plt.Normalize(-4, 4),
+        norm=plt.Normalize(-2.585, 2.585),
         ticks=np.log2([1/6, 1/2, 1, 2, 6])
     )
+    cb.ax.get_yaxis().labelpad = 10
+    cb.ax.set_ylabel('Local scaling (unitless)')
     cb.set_ticklabels(['1/6', '1/2', '1', '2', '6'])
     #plt.gcf().colorbar(cb, ax=[ax_front, ax_back])
     plt.tight_layout()
     # plt.show()
-    figures.savefig(fig, 'sg-illustrate.png', pad_inches=0.02)
+    figures.savefig(fig, 'fig01.png', pad_inches=0.02)
     #plt.savefig('/home/liam/Copernicus_LaTeX_Package/figures/sg-illustrate.png')
