@@ -31,7 +31,7 @@ if __name__ == '__main__':
     yy2[:,-2] = 90
 
 
-    plt.figure(figsize=figures.one_col_figsize(1))
+    plt.figure(figsize=(4, 7))#figures.one_col_figsize(1))
 
 
 
@@ -64,7 +64,7 @@ if __name__ == '__main__':
         else:
             return f'{int(2**f):d}'
 
-    plt.gca().clabel(cs, inline=1, fontsize=5, manual=True, fmt=str_fmt)
+    plt.gca().clabel(cs, inline=1, fontsize=8, manual=True, fmt=str_fmt)
 
     plt.xlim([1, 10])
     plt.xticks([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
@@ -121,6 +121,6 @@ if __name__ == '__main__':
     plt.tight_layout()
     # plt.show()
 
-    figures.savefig(plt.gcf(), 'fig02.png', pad_inches=0.05)
+    figures.savefig(plt.gcf(), 'div-thesis.png', pad_inches=0.05)
     #plt.savefig('/home/liam/Copernicus_LaTeX_Package/figures/grid-box-divergence.png')
 

@@ -38,7 +38,7 @@ def draw_target_face_outline(ax: plt.Axes, sf, tlat, tlon, color, face=5, is_tou
             cartopy.feature.ShapelyFeature([line], crs=ccrs.PlateCarree()),
             facecolor='none',
             edgecolor=color,
-            linewidth=0.8,
+            linewidth=1,
         )
         df[f'x:{n}'] = xm
         df[f'y:{n}'] = ym
@@ -84,7 +84,7 @@ if __name__ == '__main__':
     ]
 
 
-    plt.figure(figsize=figures.one_col_figsize(1.6))
+    plt.figure(figsize=(5.975,5.975/1.6))
     ax = plt.axes(projection=ccrs.EqualEarth())
     ax.set_global()
 
@@ -149,11 +149,11 @@ if __name__ == '__main__':
     legend = ax.legend(
         custom_lines, ['Cubed-sphere grids', 'C180e-US', 'C900e-CA'],
         loc='upper center', mode='expand', ncol=3,
-        handlelength=1, handletextpad=0.3, framealpha=1, prop={'size': 'small'}, columnspacing=3,
+        handlelength=3, handletextpad=1, framealpha=1, prop={'size': 'small'}, columnspacing=3,
         bbox_to_anchor=(0, -0.15, 1, 0.1),
         borderpad=0.6, borderaxespad=0
     )
-    legend.get_frame().set_linewidth(0.2)
+    legend.get_frame().set_linewidth(0.4)
     legend.get_frame().set_edgecolor('gray')
 
     # plt.scatter([-84.3880], [33.7490], transform=ccrs.PlateCarree(), color='k', s=0.5)
@@ -163,7 +163,7 @@ if __name__ == '__main__':
     # plt.show()
 
     # figures.display_figure_instead=True
-    figures.savefig(plt.gcf(), 'sg-experiments.png', pad_inches=0.01)
+    figures.savefig(plt.gcf(), 'sg-experiments-thesis.png', pad_inches=0.01)
     # plt.savefig('/home/liam/Copernicus_LaTeX_Package/figures/sg-experiments.png')
 
 
